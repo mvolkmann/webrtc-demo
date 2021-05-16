@@ -1,0 +1,10 @@
+body {
+  font-family: sans-serif;
+}
+
+input {
+  --padding: 0.5rem;
+  border: 1px solid lightgray;
+  border-radius: var(--padding);
+  padding: var(--padding);
+}
