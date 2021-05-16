@@ -7,11 +7,15 @@
     <title>WebRTC Demo</title>
 
     <script>
+      // This creates a variable whose value is the roomId path parameter.
+      // It can be accessed in public/script.js which is included below.
       const ROOM_ID = '<%= roomId %>';
     </script>
+    <!-- The script defer attribute causes the script to be
+        executed after the document has been parsed,
+        but before firing DOMContentLoaded. -->
     <script defer src="peerjs.min.js"></script>
-    <script defer src="/socket.io/socket.io.js"></script>
-    <script defer src="script.js"></script>
+    <script defer src="script.js" type="module"></script>
 
     <style>
       #video-grid {

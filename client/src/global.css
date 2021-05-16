@@ -2,6 +2,7 @@ body {
   font-family: sans-serif;
 }
 
+button,
 input {
   --padding: 0.5rem;
   border: 1px solid lightgray;
