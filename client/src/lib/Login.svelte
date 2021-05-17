@@ -1,5 +1,6 @@
 <script>
   import {createEventDispatcher} from 'svelte';
+  import Button from './Button.svelte';
 
   const dispatch = createEventDispatcher();
   let email = 'r.mark.volkmann@gmail.com';
@@ -26,17 +27,18 @@
     />
   </div>
   <div class="row">
-    <button>Login</button>
+    <Button type="submit">Login</Button>
   </div>
 </form>
 
 <style>
-  button {
-    margin-left: calc(var(--label-width) + var(--label-margin));
-  }
-
   form {
     --label-width: 5rem;
+    padding: 2rem;
+  }
+
+  form :global(button) {
+    margin-left: calc(var(--label-width) + var(--label-margin));
   }
 
   input {

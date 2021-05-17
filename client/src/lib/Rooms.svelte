@@ -9,6 +9,7 @@
 
   import ConfirmDialog from './ConfirmDialog.svelte';
   import {currentRoom, rooms} from './stores.js';
+  import {sortCaseInsensitive} from './util.js';
 
   const dispatch = createEventDispatcher();
 
@@ -24,6 +25,7 @@
       roomNames.push(roomName);
       return roomNames;
     });
+    roomName = '';
   }
 
   function confirmDeleteRoom(roomName) {
@@ -44,29 +46,39 @@
 
 </script>
 
-<h2>Rooms</h2>
+<section class="rooms">
+  <h2>Rooms</h2>
 
-<form class="row" on:submit|preventDefault={addRoom}>
-  <label for="room-name">New Room</label>
-  <input id="room-name" required bind:value={roomName} />
-  <button class="bare" disabled={!roomName}>
-    <Icon icon={faPlus} />
-  </button>
-</form>
+  <form class="row" on:submit|preventDefault={addRoom}>
+    <label for="room-name">New Room</label>
+    <input id="room-name" required bind:value={roomName} />
+    <button class="bare" disabled={!roomName}>
+      <Icon icon={faPlus} />
+    </button>
+  </form>
 
-{#each $rooms as roomName}
-  <div class="row">
-    <span class="room-name">{roomName}</span>
-    <button class="bare" on:click={() => joinRoom(roomName)}>
-      <Icon icon={faDoorOpen} />
-    </button>
-    <button class="bare" on:click={() => confirmDeleteRoom(roomName)}>
-      <Icon icon={faTrashAlt} />
-    </button>
-  </div>
-{:else}
-  <div>There are no rooms to show yet.</div>
-{/each}
+  {#each sortCaseInsensitive($rooms) as roomName}
+    <div class="row">
+      <span class="room-name">{roomName}</span>
+      <button
+        class="bare"
+        title="enter room"
+        on:click={() => joinRoom(roomName)}
+      >
+        <Icon icon={faDoorOpen} />
+      </button>
+      <button
+        class="bare"
+        title="delete room"
+        on:click={() => confirmDeleteRoom(roomName)}
+      >
+        <Icon icon={faTrashAlt} />
+      </button>
+    </div>
+  {:else}
+    <div>There are no rooms to show yet.</div>
+  {/each}
+</section>
 
 <ConfirmDialog
   bind:dialog={deleteDialog}
@@ -80,9 +92,13 @@
   }
 
   .room-name {
-    color: purple;
+    color: var(--input-fg-color);
     font-size: 1.2rem;
     font-weight: bold;
+  }
+
+  .rooms {
+    padding: 2rem;
   }
 
 </style>

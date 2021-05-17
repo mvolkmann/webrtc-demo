@@ -23,11 +23,35 @@
 
 body {
   font-family: sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
 button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+
   background-color: var(--secondary-color);
   border: none;
+  color: var(--input-bg-color);
+  cursor: pointer;
+  font-size: 1rem;
+  outline: none;
+  padding: 0.5rem;
+}
+
+button:disabled {
+  opacity: 0.5;
+}
+
+button:focus {
+  outline-color: var(--tertiary-color);
+}
+
+button.reverse {
+  background-color: var(--input-bg-color);
+  color: var(--secondary-color);
 }
 
 button,
@@ -38,10 +62,21 @@ input {
   padding: var(--padding);
 }
 
-button > svg.fa-svelte {
+button > .fa-svelte {
   --size: 1.5rem;
+
+  color: var(--secondary-color);
   height: var(--size) !important;
   width: var(--size) !important;
+}
+
+h1 {
+  margin: 0;
+}
+
+h2 {
+  padding-top: 0;
+  margin-top: 0;
 }
 
 label {

@@ -1,5 +1,6 @@
 <script>
   import {createEventDispatcher} from 'svelte';
+  import Button from './lib/Button.svelte';
   import Login from './lib/Login.svelte';
   import Room from './lib/Room.svelte';
   import Rooms from './lib/Rooms.svelte';
@@ -32,7 +33,7 @@
   <h1>
     <div>WebRTC Demo</div>
     {#if component !== Login}
-      <button on:click={logout}>Logout</button>
+      <Button reverse on:click={logout}>Logout</Button>
     {/if}
   </h1>
   <svelte:component this={component} on:show={show} />
@@ -40,8 +41,11 @@
 
 <style>
   h1 {
+    background-color: var(--secondary-color);
+    color: white;
     display: flex;
     justify-content: space-between;
+    padding: 2rem;
   }
 
 </style>

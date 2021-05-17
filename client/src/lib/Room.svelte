@@ -9,17 +9,35 @@
 
 </script>
 
-<h2>Room</h2>
+<section class="room">
+  <h2>
+    <span>{$currentRoom} Room</span>
+    <button
+      class="bare"
+      title="leave room"
+      on:click={() => dispatch('show', 'rooms')}
+    >
+      <Icon icon={faDoorClosed} />
+    </button>
+  </h2>
 
-<div>You are in room {$currentRoom}.</div>
-
-<button class="bare" on:click={() => dispatch('show', 'rooms')}>
-  <Icon icon={faDoorClosed} />
-</button>
-
-<div id="video-grid" bind:this={videoGrid} />
+  <div id="video-grid" bind:this={videoGrid} />
+</section>
 
 <style>
+  h2 {
+    display: flex;
+    align-items: center;
+  }
+
+  h2 > button {
+    margin-left: 1rem;
+  }
+
+  .room {
+    padding: 2rem;
+  }
+
   #video-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, 300px);
