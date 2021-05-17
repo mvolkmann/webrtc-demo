@@ -9,3 +9,13 @@ input {
   border-radius: var(--padding);
   padding: var(--padding);
 }
+
+label {
+  font-weight: bold;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
