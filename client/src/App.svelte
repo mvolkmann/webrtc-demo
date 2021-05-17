@@ -1,4 +1,5 @@
 <script>
+  import {createEventDispatcher} from 'svelte';
   import Login from './lib/Login.svelte';
   import Room from './lib/Room.svelte';
   import Rooms from './lib/Rooms.svelte';
@@ -13,18 +14,34 @@
     room: Room,
     rooms: Rooms
   };
+  const dispatch = createEventDispatcher();
 
   let component = Login;
 
-  function show(componentName) {
-    component = componentMap[componentName];
+  function logout() {
+    component = Login;
   }
+
+  function show(event) {
+    component = componentMap[event.detail];
+  }
+
 </script>
 
 <main>
-  <h1>WebRTC Demo</h1>
+  <h1>
+    <div>WebRTC Demo</div>
+    {#if component !== Login}
+      <button on:click={logout}>Logout</button>
+    {/if}
+  </h1>
   <svelte:component this={component} on:show={show} />
 </main>
 
 <style>
+  h1 {
+    display: flex;
+    justify-content: space-between;
+  }
+
 </style>

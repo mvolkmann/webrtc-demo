@@ -14,4 +14,6 @@ function writableSession(key, initialValue) {
 }
 
 export const busy = writable(false);
+export const currentRoom = writableSession('room', '');
 export const darkModeStore = writable(false);
+export const rooms = writableSession('rooms', []);

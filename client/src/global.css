@@ -1,5 +1,33 @@
+:root {
+  --bg-color: #47475b;
+  --even-table-row-bg-color: #e7eaeb;
+  --input-bg-color: white;
+  --input-fg-color: black;
+  --label-color: white;
+  --label-margin: 0.5rem;
+  --odd-table-row-bg-color: #e7eaeb;
+  --secondary-color: #6760dd;
+  --selected-color: #449af7;
+  --tertiary-color: #e5e5e5;
+  --primary-color: #1d1c29;
+  --table-heading-bg-color: darkgray;
+  --text-color: white;
+  --warning-color: orange;
+}
+
+.bare {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
 body {
   font-family: sans-serif;
+}
+
+button {
+  background-color: var(--secondary-color);
+  border: none;
 }
 
 button,
@@ -10,12 +38,19 @@ input {
   padding: var(--padding);
 }
 
+button > svg.fa-svelte {
+  --size: 1.5rem;
+  height: var(--size) !important;
+  width: var(--size) !important;
+}
+
 label {
   font-weight: bold;
+  margin-right: 0.5rem;
 }
 
 .row {
   display: flex;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
 }

@@ -2,8 +2,8 @@
   import {createEventDispatcher} from 'svelte';
 
   const dispatch = createEventDispatcher();
-  let email;
-  let password;
+  let email = 'r.mark.volkmann@gmail.com';
+  let password = 'secret';
 
   function login() {
     dispatch('show', 'rooms');
@@ -25,7 +25,9 @@
       bind:value={password}
     />
   </div>
-  <button>Login</button>
+  <div class="row">
+    <button>Login</button>
+  </div>
 </form>
 
 <style>
@@ -34,8 +36,11 @@
   }
 
   form {
-    --label-margin: 0.5rem;
     --label-width: 5rem;
+  }
+
+  input {
+    width: 15rem;
   }
 
   label {

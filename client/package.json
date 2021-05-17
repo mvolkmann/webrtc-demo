@@ -18,6 +18,7 @@
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^5.15.3",
     "cors": "^2.8.5",
+    "dialog-polyfill": "^0.5.6",
     "ejs": "^3.1.6",
     "express": "^4.17.1",
     "fa-svelte": "^3.1.0",

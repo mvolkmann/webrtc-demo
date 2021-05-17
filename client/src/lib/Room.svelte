@@ -1,14 +1,22 @@
 <script>
-  import {back} from './util.js';
+  import Icon from 'fa-svelte';
+  import {faDoorClosed} from '@fortawesome/free-solid-svg-icons';
+  import {createEventDispatcher} from 'svelte';
+  import {currentRoom} from './stores.js';
 
-  export let roomId;
-
+  const dispatch = createEventDispatcher();
   let videoGrid;
+
 </script>
 
 <h2>Room</h2>
-<div>You are in room {roomId}.</div>
-<button on:click={back}>Exit</button>
+
+<div>You are in room {$currentRoom}.</div>
+
+<button class="bare" on:click={() => dispatch('show', 'rooms')}>
+  <Icon icon={faDoorClosed} />
+</button>
+
 <div id="video-grid" bind:this={videoGrid} />
 
 <style>
@@ -23,4 +31,5 @@
     height: 100%;
     object-fit: cover;
   }
+
 </style>
