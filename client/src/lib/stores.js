@@ -13,7 +13,8 @@ function writableSession(key, initialValue) {
   return store;
 }
 
-export const busy = writable(false);
-export const currentRoom = writableSession('room', '');
+export const busyStore = writable(false);
+export const currentRoomStore = writableSession('current-room', null);
 export const darkModeStore = writable(false);
-export const rooms = writableSession('rooms', []);
+export const emailStore = writableSession('email', 'r.mark.volkmann@gmail.com');
+export const roomsStore = writableSession('rooms', {});

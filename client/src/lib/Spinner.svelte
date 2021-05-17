@@ -1,5 +1,5 @@
 <script context="module">
-  import {busy} from './stores';
+  import {busyStore} from './stores';
 
   const MIN_TIME_TO_DISPLAY = 1000;
 
@@ -13,7 +13,7 @@
       // Wait to hide spinner until it has been
       // displayed for a minimum amount of time.
       const waitTime = Math.max(0, MIN_TIME_TO_DISPLAY - timeDisplayed);
-      setTimeout(() => busy.set(false), waitTime);
+      setTimeout(() => busyStore.set(false), waitTime);
     }
   }
 
@@ -26,7 +26,7 @@
       // it never appears for short duration tasks.
       setTimeout(() => {
         startTime = Date.now();
-        if (busyCounter > 0) busy.set(true);
+        if (busyCounter > 0) busyStore.set(true);
       }, 500);
     }
   }
@@ -90,7 +90,7 @@
   }
 </script>
 
-{#if $busy}
+{#if $busyStore}
   <div class="spinner" style={`--size: ${size}px`}>
     <svg class="progress" width={size} height={size}>
       <path

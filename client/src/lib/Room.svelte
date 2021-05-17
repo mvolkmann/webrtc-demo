@@ -11,31 +11,54 @@
     faVideo
   } from '@fortawesome/free-solid-svg-icons';
   import {createEventDispatcher} from 'svelte';
-  import {currentRoom} from './stores.js';
+
+  import {deleteResource} from './fetch-util.js';
+  import {currentRoomStore, emailStore, roomsStore} from './stores.js';
 
   const dispatch = createEventDispatcher();
 
   let audioOn = false;
   let chat = false;
+  let errorMessage = '';
   let handRaised = false;
-  let screenSharingOn = false;
   let shareScreen = false;
   let videoGrid;
   let videoOn = false;
+
+  $: currentRoomName = $currentRoomStore ? $currentRoomStore.name : '';
+
+  async function leaveRoom() {
+    try {
+      const {name} = $currentRoomStore;
+      const email = $emailStore;
+      //TODO: Need encodeURIComponent for email?
+      await deleteResource(`room/${name}/participant/${email}`);
+      roomsStore.update(theRooms => {
+        const room = theRooms[name];
+        room.participants.filter(participant => participant !== email);
+        return theRooms;
+      });
+      $currentRoomStore = null;
+      errorMessage = '';
+      dispatch('show', 'rooms');
+    } catch (e) {
+      errorMessage = 'Error leaving room: ' + e.message;
+    }
+  }
 
 </script>
 
 <section class="room">
   <h2>
-    <span>{$currentRoom} Room</span>
-    <button
-      class="bare"
-      title="leave room"
-      on:click={() => dispatch('show', 'rooms')}
-    >
+    <span>{currentRoomName} Room</span>
+    <button class="bare" title="leave room" on:click={leaveRoom}>
       <Icon icon={faDoorClosed} />
     </button>
   </h2>
+
+  {#if errorMessage}
+    <div class="error">{errorMessage}</div>
+  {/if}
 
   <div class="buttons">
     <button

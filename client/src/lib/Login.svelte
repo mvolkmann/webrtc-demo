@@ -1,21 +1,26 @@
 <script>
   import {createEventDispatcher} from 'svelte';
   import Button from './Button.svelte';
+  import {emailStore} from './stores.js';
 
   const dispatch = createEventDispatcher();
-  let email = 'r.mark.volkmann@gmail.com';
   let password = 'secret';
 
   function login() {
+    //TODO: Add authentication!
     dispatch('show', 'rooms');
   }
-
 </script>
 
 <form on:submit|preventDefault={login}>
   <div class="row">
     <label for="email">Email</label>
-    <input type="email" autocomplete="email" required bind:value={email} />
+    <input
+      type="email"
+      autocomplete="email"
+      required
+      bind:value={$emailStore}
+    />
   </div>
   <div class="row">
     <label for="password">Password</label>
@@ -50,5 +55,4 @@
     text-align: right;
     width: var(--label-width);
   }
-
 </style>

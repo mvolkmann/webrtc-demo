@@ -1,5 +1,4 @@
 <script>
-  import {createEventDispatcher} from 'svelte';
   import Button from './lib/Button.svelte';
   import Login from './lib/Login.svelte';
   import Room from './lib/Room.svelte';
@@ -15,7 +14,6 @@
     room: Room,
     rooms: Rooms
   };
-  const dispatch = createEventDispatcher();
 
   let component = Login;
 
@@ -26,7 +24,6 @@
   function show(event) {
     component = componentMap[event.detail];
   }
-
 </script>
 
 <main>
@@ -47,5 +44,4 @@
     justify-content: space-between;
     padding: 2rem;
   }
-
 </style>

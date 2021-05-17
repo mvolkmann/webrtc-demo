@@ -23,6 +23,10 @@ app.use(cors());
 // Can remove this after Svelte version is working.
 app.use(express.static('public'));
 
+// This enables parsing JSON request bodies.
+app.use(express.json());
+
+/*
 // Can remove this after Svelte version is working.
 app.get('/', (req, res) => {
   // This gives every user a unique room id.
@@ -38,6 +42,7 @@ app.get('/:roomId', (req, res) => {
   // It will also be appended to the URL as a path parameter.
   res.render('room', {roomId: req.params.roomId});
 });
+*/
 
 // Create a WebSocket server.
 const wss = new WebSocket.Server({port: 1919});
@@ -87,6 +92,100 @@ wss.on('connection', (ws, req) => {
       }
     }
   });
+});
+
+const rooms = {};
+
+// Retrieves all the existing rooms.
+app.get('/room', (req, res) => {
+  res.set('Content-Type', 'application/json');
+  res.send(JSON.stringify(rooms));
+});
+
+// Retrieves a specific room.
+app.get('/room/:roomName', (req, res) => {
+  const {roomName} = req.params;
+  const room = rooms[roomName];
+  if (!room) return res.status(404).send(); // NOT FOUND
+  res.set('Content-Type', 'application/json');
+  res.send(room);
+});
+
+// Creates a new room.
+app.post('/room', (req, res) => {
+  const {name} = req.body;
+  if (rooms[name]) {
+    return res.status(409).send('room already exists'); // CONFLICT
+  }
+  const room = {name, participants: []};
+  rooms[name] = room;
+  res.set('Content-Type', 'application/json');
+  res.status(201).send(JSON.stringify(room)); // CREATED
+});
+
+// Updates an existing room.
+app.put('/room/:roomName', (req, res) => {
+  const {roomName} = req.params;
+  const room = rooms[roomName];
+  if (!room) return res.status(404).send(); // NOT FOUND
+
+  if (room.participants.length) {
+    // CONFLICT
+    return res.status(409).send('cannot update room with participants');
+  }
+
+  const newRoom = req.body;
+  if (newRoom.name === room.name) {
+    rooms[room.name] = newRoom;
+  } else {
+    delete rooms[room.name];
+    rooms[newRoom.name] = newRoom;
+  }
+  res.send();
+});
+
+// Deletes an existing room.
+app.delete('/room/:roomName', (req, res) => {
+  const {roomName} = req.params;
+  const room = rooms[roomName];
+  if (!room) return res.status(404).send(); // NOT FOUND
+
+  if (room.participants.length) {
+    // CONFLICT
+    return res.status(409).send('cannot delete room with participants');
+  }
+
+  delete rooms[roomName];
+  res.send();
+});
+
+// Adds a participant to a room.
+app.post('/room/:roomName/participant', (req, res) => {
+  const {roomName} = req.params;
+  const room = rooms[roomName];
+  if (!room) return res.status(404).send(); // NOT FOUND
+
+  const {email} = req.body;
+  if (room.participants.includes(email)) {
+    return res.status(400).send('participant already in room');
+  }
+  room.participants.push(email);
+  res.set('Content-Type', 'application/json');
+  res.send(JSON.stringify(room));
+});
+
+// Removes a participant from a room.
+app.delete('/room/:roomName/participant/:participant', (req, res) => {
+  const {participant, roomName} = req.params;
+  const room = rooms[roomName];
+  if (!room) return res.status(404).send(); // NOT FOUND
+
+  if (!room.participants.includes(participant)) {
+    return res.status(404).send('participant not in room'); // NOT FOUND
+  }
+
+  room.participants = room.participants.filter(p => p !== participant);
+  res.send();
 });
 
 const PORT = 1234;
