@@ -2,14 +2,17 @@
   import {createEventDispatcher} from 'svelte';
   import Button from './Button.svelte';
   import {emailStore} from './stores.js';
+  import {wtcSetup} from './webrtc-util.js';
 
   const dispatch = createEventDispatcher();
   let password = 'secret';
 
   function login() {
     //TODO: Add authentication!
+    wtcSetup($emailStore);
     dispatch('show', 'rooms');
   }
+
 </script>
 
 <form on:submit|preventDefault={login}>
@@ -55,4 +58,5 @@
     text-align: right;
     width: var(--label-width);
   }
+
 </style>

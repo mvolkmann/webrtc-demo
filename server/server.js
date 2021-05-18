@@ -2,13 +2,14 @@ import cors from 'cors';
 import express from 'express';
 import http from 'http';
 import WebSocket from 'ws';
-import {v4 as uuidV4} from 'uuid';
+//import {v4 as uuidV4} from 'uuid';
 
 const app = express();
 const server = http.Server(app);
 
-const roomToUsersMap = {};
-const userToWsMap = {};
+const emailToUserIdMap = {};
+const emailToWsMap = {};
+const rooms = {};
 
 // This enables rendering HTML from .ejs files in the views directory.
 // Can remove this after Svelte version is working.
@@ -26,21 +27,48 @@ app.use(express.static('public'));
 // This enables parsing JSON request bodies.
 app.use(express.json());
 
+// Broadcast data to all the users in a given room.
+function broadcast(thisWs, roomName, data) {
+  const message = JSON.stringify(data);
+
+  // This approach doesn't support sending the message
+  // to only clients in the given room.
+  //wss.clients.forEach(client => {
+
+  const room = rooms[roomName];
+  const webSockets = room.emails.map(email => emailToWsMap[email]);
+  for (const ws of webSockets) {
+    const isOpen = ws.readyState === WebSocket.OPEN;
+    const isSelf = ws === thisWs;
+    if (isOpen && !isSelf) ws.send(message);
+  }
+}
+
+const notFound = (res, message = '') => res.status(404).send(message);
+
+function sendJson(res, obj, status = 200) {
+  res.set('Content-Type', 'application/json');
+  res.status(status).send(JSON.stringify(obj));
+}
+
 /*
 // Can remove this after Svelte version is working.
-app.get('/', (req, res) => {
+app.get('/ejs', (req, res) => {
   // This gives every user a unique room id.
   const roomId = uuidV4();
-  res.redirect('/' + roomId);
+  console.log('server.js x: roomId =', roomId);
+  res.redirect('/ejs/' + roomId);
 });
 
 // Can remove this after Svelte version is working.
-app.get('/:roomId', (req, res) => {
+app.get('/ejs/:roomId', (req, res) => {
   // This uses the room.ejs file in the views directory
   // to generate the HTML that is returned to the browser.
   // "roomId" will be available in template tags.
   // It will also be appended to the URL as a path parameter.
-  res.render('room', {roomId: req.params.roomId});
+  const {roomId} = req.params;
+  console.log('server.js y: roomId =', roomId);
+  res.render('room', {roomId});
 });
 */
 
@@ -52,63 +80,34 @@ wss.on('connection', (ws, req) => {
   //const ip = req.socket.remoteAddress;
   //console.log('script.js connection: ip =', ip);
 
-  // Broadcast data to all the users in a given room.
-  function broadcast(roomId, data) {
-    const message = JSON.stringify(data);
-
-    // This approach doesn't support sending the message
-    // to only clients in the given room.
-    //wss.clients.forEach(client => {
-
-    const userIds = roomToUsersMap[roomId];
-    const clients = userIds.map(userId => userToWsMap[userId]);
-    for (const client of clients) {
-      const isOpen = client.readyState === WebSocket.OPEN;
-      const isSelf = client === ws;
-      if (isOpen && !isSelf) client.send(message);
-    }
-  }
-
   // When a message is received ...
   ws.on('message', message => {
     console.log('script.js message: message =', message);
     const json = JSON.parse(message);
     console.log('script.js message: json =', json);
-    const {type, roomId, userId} = json;
-    userToWsMap[userId] = ws;
+    const {email, type, roomName} = json;
+    emailToWsMap[email] = ws;
     if (type === 'join-room') {
-      let users = roomToUsersMap[roomId];
-      if (!users) users = roomToUsersMap[roomId] = [];
-      users.push(userId);
-      broadcast(roomId, {type: 'user-connected', userId});
-    } else if (type === 'user-disconnected') {
-      // Let all the other users in the same rooms know that
-      // they disconnected so their video can be removed.
-      const rooms = Object.keys(roomToUsersMap).filter(roomId =>
-        roomToUsersMap[roomId].includes(userId)
-      );
-      for (const roomId of rooms) {
-        broadcast(roomId, {type: 'user-disconnected', userId});
-      }
+      const userId = emailToUserIdMap[email];
+      broadcast(ws, roomName, {type: 'user-connected', userId});
     }
   });
 });
 
-const rooms = {};
-
 // Retrieves all the existing rooms.
 app.get('/room', (req, res) => {
-  res.set('Content-Type', 'application/json');
-  res.send(JSON.stringify(rooms));
+  sendJson(res, rooms);
 });
 
 // Retrieves a specific room.
 app.get('/room/:roomName', (req, res) => {
   const {roomName} = req.params;
   const room = rooms[roomName];
-  if (!room) return res.status(404).send(); // NOT FOUND
-  res.set('Content-Type', 'application/json');
-  res.send(room);
+  if (room) {
+    sendJson(res, room);
+  } else {
+    notFound(res);
+  }
 });
 
 // Creates a new room.
@@ -117,19 +116,18 @@ app.post('/room', (req, res) => {
   if (rooms[name]) {
     return res.status(409).send('room already exists'); // CONFLICT
   }
-  const room = {name, participants: []};
+  const room = {name, emails: []};
   rooms[name] = room;
-  res.set('Content-Type', 'application/json');
-  res.status(201).send(JSON.stringify(room)); // CREATED
+  sendJson(res, room, 201);
 });
 
 // Updates an existing room.
 app.put('/room/:roomName', (req, res) => {
   const {roomName} = req.params;
   const room = rooms[roomName];
-  if (!room) return res.status(404).send(); // NOT FOUND
+  if (!room) return notFound(res);
 
-  if (room.participants.length) {
+  if (room.emails.length) {
     // CONFLICT
     return res.status(409).send('cannot update room with participants');
   }
@@ -148,9 +146,9 @@ app.put('/room/:roomName', (req, res) => {
 app.delete('/room/:roomName', (req, res) => {
   const {roomName} = req.params;
   const room = rooms[roomName];
-  if (!room) return res.status(404).send(); // NOT FOUND
+  if (!room) return notFound(res);
 
-  if (room.participants.length) {
+  if (room.emails.length) {
     // CONFLICT
     return res.status(409).send('cannot delete room with participants');
   }
@@ -160,31 +158,39 @@ app.delete('/room/:roomName', (req, res) => {
 });
 
 // Adds a participant to a room.
-app.post('/room/:roomName/participant', (req, res) => {
+app.post('/room/:roomName/email', (req, res) => {
   const {roomName} = req.params;
   const room = rooms[roomName];
-  if (!room) return res.status(404).send(); // NOT FOUND
+  if (!room) return notFound(res);
 
   const {email} = req.body;
-  if (room.participants.includes(email)) {
-    return res.status(400).send('participant already in room');
-  }
-  room.participants.push(email);
-  res.set('Content-Type', 'application/json');
-  res.send(JSON.stringify(room));
+  if (!room.emails.includes(email)) room.emails.push(email);
+
+  sendJson(res, room);
 });
 
 // Removes a participant from a room.
-app.delete('/room/:roomName/participant/:participant', (req, res) => {
-  const {participant, roomName} = req.params;
+app.delete('/room/:roomName/email/:email', (req, res) => {
+  const {email, roomName} = req.params;
   const room = rooms[roomName];
-  if (!room) return res.status(404).send(); // NOT FOUND
+  if (!room) return notFound(res);
 
-  if (!room.participants.includes(participant)) {
-    return res.status(404).send('participant not in room'); // NOT FOUND
+  if (!room.emails.includes(email)) {
+    return notFound(res, 'participant not in room');
   }
 
-  room.participants = room.participants.filter(p => p !== participant);
+  room.emails = room.emails.filter(p => p !== email);
+
+  const userId = emailToUserIdMap[email];
+  broadcast(null, roomName, {type: 'leave-room', userId});
+
+  res.send();
+});
+
+// Associates a user id with an email.
+app.post('/user', (req, res) => {
+  const {email, userId} = req.body;
+  emailToUserIdMap[email] = userId;
   res.send();
 });
 

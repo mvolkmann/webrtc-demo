@@ -10,10 +10,11 @@
     faMicrophone,
     faVideo
   } from '@fortawesome/free-solid-svg-icons';
-  import {createEventDispatcher} from 'svelte';
+  import {createEventDispatcher, onMount} from 'svelte';
 
   import {deleteResource} from './fetch-util.js';
   import {currentRoomStore, emailStore, roomsStore} from './stores.js';
+  import {joinRoom} from './webrtc-util.js';
 
   const dispatch = createEventDispatcher();
 
@@ -27,15 +28,18 @@
 
   $: currentRoomName = $currentRoomStore ? $currentRoomStore.name : '';
 
+  onMount(() => {
+    joinRoom($emailStore, currentRoomName, videoGrid);
+  });
+
   async function leaveRoom() {
     try {
       const {name} = $currentRoomStore;
       const email = $emailStore;
-      //TODO: Need encodeURIComponent for email?
-      await deleteResource(`room/${name}/participant/${email}`);
+      await deleteResource(`room/${name}/email/${email}`);
       roomsStore.update(theRooms => {
         const room = theRooms[name];
-        room.participants.filter(participant => participant !== email);
+        room.emails.filter(e => e !== email);
         return theRooms;
       });
       $currentRoomStore = null;

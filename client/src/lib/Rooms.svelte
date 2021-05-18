@@ -24,6 +24,7 @@
   onMount(loadRooms);
 
   function confirmDeleteRoom(room) {
+    console.log('Rooms.svelte confirmDeleteRoom: entered');
     roomToDelete = room;
     deleteDialog.showModal();
   }
@@ -40,12 +41,17 @@
       roomName = '';
       errorMessage = '';
     } catch (e) {
-      errorMessage = 'Error adding room: ' + e.message;
+      errorMessage = 'Error adding room: ' + e;
     }
   }
 
   async function deleteRoom() {
-    //TODO: Don't allow when there are participants.
+    const roomOccupied = roomToDelete.emails.length > 0;
+    if (roomOccupied) {
+      alert('An occupied room cannot be deleted.');
+      return;
+    }
+
     const {name} = roomToDelete;
     try {
       await deleteResource('room/' + name);
@@ -55,7 +61,7 @@
       });
       errorMessage = '';
     } catch (e) {
-      errorMessage = 'Error deleting room: ' + e.message;
+      errorMessage = 'Error deleting room: ' + e;
     }
   }
 
@@ -63,7 +69,7 @@
     const {name} = room;
     const email = $emailStore;
     try {
-      const newRoom = await postJson(`room/${name}/participant`, {email});
+      const newRoom = await postJson(`room/${name}/email`, {email});
       roomsStore.update(theRooms => {
         theRooms[name] = newRoom;
         return theRooms;
@@ -72,7 +78,7 @@
       errorMessage = '';
       dispatch('show', 'room');
     } catch (e) {
-      errorMessage = 'Error joining room: ' + e.message;
+      errorMessage = 'Error joining room: ' + e;
     }
   }
 
@@ -80,7 +86,7 @@
     try {
       $roomsStore = await getJson('room');
     } catch (e) {
-      errorMessage = 'Error getting rooms: ' + e.message;
+      errorMessage = 'Error getting rooms: ' + e;
     }
   }
 
@@ -103,7 +109,7 @@
 
   {#each sortCaseInsensitive(Object.values($roomsStore), 'name') as room}
     <div class="row">
-      <span class="room-name">{room.name} ({room.participants.length})</span>
+      <span class="room-name">{room.name} ({room.emails.length})</span>
       <button class="bare" title="enter room" on:click={() => joinRoom(room)}>
         <Icon icon={faDoorOpen} />
       </button>

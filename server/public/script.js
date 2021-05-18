@@ -68,7 +68,8 @@ function connectToOtherUser(userId, stream) {
 }
 
 function destroyPeer() {
-  if (ws) ws.send(JSON.stringify(data));
+  //TODO: Why was this needed?
+  //if (ws) ws.send(JSON.stringify(data));
 
   const peer = peerMap[userId];
   if (peer) {
