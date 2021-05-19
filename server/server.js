@@ -1,9 +1,7 @@
 import cors from 'cors';
 import express from 'express';
-import http from 'http';
 import peer from 'peer';
 import WebSocket from 'ws';
-//import {v4 as uuidV4} from 'uuid';
 
 const app = express();
 
@@ -11,18 +9,9 @@ const emailToUserIdMap = {};
 const emailToWsMap = {};
 const rooms = {};
 
-// This enables rendering HTML from .ejs files in the views directory.
-// Can remove this after Svelte version is working.
-app.set('view engine', 'ejs');
-
 // This enables Cross-Origin Resource Sharing (CORS)
 // which is needed to allow Socket.io connections from another domain.
 app.use(cors());
-
-// This enables serving static files from the public directory.
-// This includes the script.js file.
-// Can remove this after Svelte version is working.
-app.use(express.static('public'));
 
 // This enables parsing JSON request bodies.
 app.use(express.json());
@@ -54,27 +43,6 @@ function sendJson(res, obj, status = 200) {
   res.set('Content-Type', 'application/json');
   res.status(status).send(JSON.stringify(obj));
 }
-
-/*
-// Can remove this after Svelte version is working.
-app.get('/ejs', (req, res) => {
-  // This gives every user a unique room id.
-  const roomId = uuidV4();
-  console.log('server.js x: roomId =', roomId);
-  res.redirect('/ejs/' + roomId);
-});
-
-// Can remove this after Svelte version is working.
-app.get('/ejs/:roomId', (req, res) => {
-  // This uses the room.ejs file in the views directory
-  // to generate the HTML that is returned to the browser.
-  // "roomId" will be available in template tags.
-  // It will also be appended to the URL as a path parameter.
-  const {roomId} = req.params;
-  console.log('server.js y: roomId =', roomId);
-  res.render('room', {roomId});
-});
-*/
 
 // Create a WebSocket server.
 const wss = new WebSocket.Server({port: 1919});

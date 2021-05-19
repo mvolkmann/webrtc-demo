@@ -3,22 +3,19 @@
 This is based on the YouTube video by Kyle Cook (WebDevSimplified)
 at <https://www.youtube.com/watch?v=DvlyzDZDEq4>.
 
-Note that three servers must be started to run this app!
+Two servers must be started to run this app.
 
-This app uses the "peerjs" npm package which provides
-client functionality for using WebRTC.
-It also uses the "peer" npm package
-which implements a server for peerjs.
-This server is used to establish connections between peerjs clients.
+A Node.js server based on Express, peerjs, and WebSockets
+is implemented in the server directory.
+Express is used to implement REST services
+for managing rooms and their participants.
+The peerjs package which provides client functionality for using WebRTC.
+WebSockets are used to provide two-way communication
+between the server and all the web clients.
 
-To start the peer server, enter `npm run peer`.
+To start this server, cd to that directory and enter `npm start`.
 
-This app uses Express and Socket.io to implement a server.
-To start the Express server, enter `npm start`.
-
-The purpose of the server is to create "rooms" and
-allow clients to discover and connect to each other.
-The media streams communicate directly between the clients.
+The media streams (audio and video) communicate directly between the clients.
 The data does not pass through the server.
 This means that once clients have been connected,
 the server can be stopped and the clients can continue communicating.

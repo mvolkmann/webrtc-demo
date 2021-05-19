@@ -85,7 +85,7 @@ function getTokenFromCookie(cookieName) {
 */
 
 function getUrl(path) {
-  return path.startsWith('http') ? path : getUrlPrefix() + path;
+  return path.startsWith('http') ? path : getUrlPrefix() + '/' + path;
 }
 
 function getUrlPrefix() {
