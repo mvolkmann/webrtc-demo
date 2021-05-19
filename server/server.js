@@ -5,8 +5,9 @@ import WebSocket from 'ws';
 
 const app = express();
 
-const emailToUserIdMap = {};
+const emailToPeerIdMap = {};
 const emailToWsMap = {};
+const peerIdToEmailMap = {};
 const rooms = {};
 
 // This enables Cross-Origin Resource Sharing (CORS)
@@ -59,20 +60,26 @@ wss.on('connection', (ws, req) => {
     const {email, type, roomName} = json;
     emailToWsMap[email] = ws;
     if (type === 'join-room') {
-      const userId = emailToUserIdMap[email];
-      broadcast(ws, roomName, {type: 'user-connected', userId});
+      const peerId = emailToPeerIdMap[email];
+      broadcast(ws, roomName, {type: 'user-connected', email, peerId});
     } else {
       console.log('server.js message: type =', type, 'was ignored');
     }
   });
 });
 
-// Retrieves all the existing rooms.
+// Gets the email address corresponding to a given peer id.
+app.get('/peer/:peerId/email', (req, res) => {
+  const {peerId} = req.params;
+  res.send(peerIdToEmailMap[peerId] || '');
+});
+
+// Gets all the existing rooms.
 app.get('/room', (req, res) => {
   sendJson(res, rooms);
 });
 
-// Retrieves a specific room.
+// Gets a specific room.
 app.get('/room/:roomName', (req, res) => {
   const {roomName} = req.params;
   const room = rooms[roomName];
@@ -154,16 +161,17 @@ app.delete('/room/:roomName/email/:email', (req, res) => {
 
   room.emails = room.emails.filter(p => p !== email);
 
-  const userId = emailToUserIdMap[email];
-  broadcast(null, roomName, {type: 'leave-room', userId});
+  const peerId = emailToPeerIdMap[email];
+  broadcast(null, roomName, {type: 'leave-room', peerId});
 
   res.send();
 });
 
 // Associates a user id with an email.
 app.post('/user', (req, res) => {
-  const {email, userId} = req.body;
-  emailToUserIdMap[email] = userId;
+  const {email, peerId} = req.body;
+  emailToPeerIdMap[email] = peerId;
+  peerIdToEmailMap[peerId] = email;
   res.send();
 });
 
