@@ -1,5 +1,3 @@
-//import axios from 'axios';
-//import jwtDecode from 'jwt-decode';
 import {taskEnd, taskStart} from './Spinner.svelte';
 //import {sleep} from './util';
 
@@ -71,19 +69,6 @@ function getOptions(options = {}) {
   return options;
 }
 
-/*
-function getTokenFromCookie(cookieName) {
-  const cookies = getCookies();
-  const token = cookies[cookieName];
-  if (token) {
-    const jwt = jwtDecode(token);
-    console.log('fetch-util.js getTokenFromCookie: jwt =', jwt);
-  } else {
-    console.log('fetch-util.js getTokenFromCookie: token not found');
-  }
-}
-*/
-
 function getUrl(path) {
   return path.startsWith('http') ? path : getUrlPrefix() + '/' + path;
 }
@@ -134,20 +119,6 @@ async function handleResponse(res) {
 
 export const patchJson = async (path, payload) =>
   handleJson('PATCH', path, payload);
-
-/*
-export async function postFile(path, file, onUploadProgress) {
-  const formData = new FormData();
-  formData.append('file', file);
-  const res = await axios.post(getUrl(path), formData, {
-    ...getOptions(),
-    onUploadProgress
-  });
-  // This line is specific to Axios.
-  if (res.status !== 201) throw new Error(res.statusText);
-  return res.data;
-}
-*/
 
 export const postJson = async (path, payload) =>
   handleJson('POST', path, payload);

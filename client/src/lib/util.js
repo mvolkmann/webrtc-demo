@@ -7,6 +7,8 @@ export function getBodyCssVar(name, defaultValue) {
   return cssVar || defaultValue;
 }
 
+export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 // Sorts an array of objects on a given property
 // in ascending, case-insensitive order.
 export function sortCaseInsensitive(arr, property) {
