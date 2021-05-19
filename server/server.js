@@ -36,11 +36,15 @@ function broadcast(thisWs, roomName, data) {
   //wss.clients.forEach(client => {
 
   const room = rooms[roomName];
-  const webSockets = room.emails.map(email => emailToWsMap[email]);
-  for (const ws of webSockets) {
-    const isOpen = ws.readyState === WebSocket.OPEN;
-    const isSelf = ws === thisWs;
-    if (isOpen && !isSelf) ws.send(message);
+  if (room) {
+    const webSockets = room.emails.map(email => emailToWsMap[email]);
+    for (const ws of webSockets) {
+      const isOpen = ws.readyState === WebSocket.OPEN;
+      const isSelf = ws === thisWs;
+      if (isOpen && !isSelf) ws.send(message);
+    }
+  } else {
+    console.error(`server.js broadcast: no room named ${roomName} found`);
   }
 }
 
@@ -78,18 +82,19 @@ const wss = new WebSocket.Server({port: 1919});
 // When a client connects ...
 wss.on('connection', (ws, req) => {
   //const ip = req.socket.remoteAddress;
-  //console.log('script.js connection: ip =', ip);
+  //console.log('server.js connection: ip =', ip);
 
   // When a message is received ...
   ws.on('message', message => {
-    console.log('script.js message: message =', message);
     const json = JSON.parse(message);
-    console.log('script.js message: json =', json);
+    console.log('server.js message: json =', json);
     const {email, type, roomName} = json;
     emailToWsMap[email] = ws;
     if (type === 'join-room') {
       const userId = emailToUserIdMap[email];
       broadcast(ws, roomName, {type: 'user-connected', userId});
+    } else {
+      console.log('server.js message: type =', type, 'was ignored');
     }
   });
 });

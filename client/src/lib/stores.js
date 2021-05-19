@@ -13,6 +13,7 @@ function writableSession(key, initialValue) {
   return store;
 }
 
+export const audioOnStore = writable(false);
 export const busyStore = writable(false);
 export const currentRoomStore = writableSession('current-room', null);
 export const darkModeStore = writable(false);

@@ -1,7 +1,7 @@
 <script>
   import {createEventDispatcher} from 'svelte';
   import Button from './Button.svelte';
-  import {emailStore} from './stores.js';
+  import {audioOnStore, emailStore} from './stores.js';
   import {wtcSetup} from './webrtc-util.js';
 
   const dispatch = createEventDispatcher();
@@ -9,7 +9,7 @@
 
   function login() {
     //TODO: Add authentication!
-    wtcSetup($emailStore);
+    wtcSetup($emailStore, $audioOnStore);
     dispatch('show', 'rooms');
   }
 

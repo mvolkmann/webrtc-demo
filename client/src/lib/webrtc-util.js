@@ -16,6 +16,7 @@ let ws;
 createWebSocket();
 
 function addVideoStream(video, stream, userId) {
+  // If the video is already associated with this stream ...
   if (stream === video.srcObject) return;
 
   if (userId) video.id = 'user-' + userId;
@@ -26,9 +27,9 @@ function addVideoStream(video, stream, userId) {
   });
 }
 
+// This is called when we receive a WebSocket message
+// informing us that another user has joined the room we are in.
 function connectToOtherUser(userId) {
-  console.log('webrtc-util.js connectToOtherUser: userId =', userId);
-
   // Create a video element for rendering their stream.
   const video = document.createElement('video');
 
@@ -39,7 +40,11 @@ function connectToOtherUser(userId) {
   // When another user shares their stream with me,
   // add a video element that renders their stream.
   call.on('stream', stream => {
-    addVideoStream(video, stream, userId);
+    addVideoStream(video, stream, call.peer);
+  });
+
+  call.on('error', error => {
+    alert('Error sharing Peer stream: ' + error);
   });
 
   // This event is never sent.
@@ -48,7 +53,7 @@ function connectToOtherUser(userId) {
   // remove the video element that was rendering their stream.
   //TODO: This should be triggered by destroyPeer in webrtc-util.js!
   call.on('close', () => {
-    console.log('script.js connectToOtherUser: got close event');
+    console.log('webrtc-util.js connectToOtherUser: got close event');
     video.remove();
   });
 
@@ -65,8 +70,7 @@ function createPeer(email) {
     port: PEER_PORT
   });
 
-  // When I have connected to the Peer server,
-  // it will supply a generated user id.
+  // When I connect to the Peer server, it will supply a generated user id.
   myPeer.on('open', async thisUserId => {
     myUserId = thisUserId;
 
@@ -76,7 +80,6 @@ function createPeer(email) {
       console.error('error associating userId with email:', e);
     }
 
-    console.log('webrtc-util.js open event: myUserId =', myUserId);
     peerMap[myUserId] = myPeer;
 
     // It is important that myStream is set before we listen for "call" events.
@@ -84,15 +87,15 @@ function createPeer(email) {
     // When another user wants to connect to me ...
     myPeer.on('call', call => {
       // This is called once for each client that connects to this one.
-      console.log('webrtc-util.js open: call event received');
 
       // Send my stream to the other user.
       call.answer(myStream);
 
       // When another user shares their stream with me,
       // add the video element that renders their stream.
+      //TODO: How can we know the userId associated with otherStream?
       call.on('stream', otherStream => {
-        // If we already have video element that is using this stream ...
+        // Determine if we already have video element that is using this stream.
         const videos = Array.from(myVideoGrid.querySelectorAll('video'));
         const alreadyUsing = videos.some(
           video => video.srcObject.id === otherStream.id
@@ -101,21 +104,19 @@ function createPeer(email) {
 
         // Create a video element for rendering their stream.
         const otherVideo = document.createElement('video');
-        //TODO: How can you get the userId of other other user
-        //TODO: so you can set the id of this video element?
 
-        console.log('webrtc-util.js peer call: calling addVideoStream');
-        addVideoStream(otherVideo, otherStream);
+        // call.peer holds the userId associated with otherStream.
+        addVideoStream(otherVideo, otherStream, call.peer);
       });
     });
   });
 }
 
-async function createStream() {
+async function createStream(audioOn) {
   try {
     myStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true
+      audio: audioOn,
+      video: true
     });
   } catch (e) {
     console.error('createStream error:', e);
@@ -126,23 +127,24 @@ function createWebSocket() {
   // Open a connection to the WebSocket server.
   const WS_URL = 'ws://localhost:1919';
   ws = new WebSocket(WS_URL);
-  console.log('webrtc-util.js createWebSocket: ws =', ws);
 
   window.onbeforeunload = destroyPeer;
 
   // When a WebSocket message is received ...
   ws.addEventListener('message', event => {
     const data = JSON.parse(event.data);
-    console.log('script.js message: data =', data);
+    console.log('webrtc-util.js received ws message: data =', data);
     const {type, userId} = data;
 
+    // We only receive this kind of message
+    // for users that join a room we are in.
     if (type === 'user-connected') {
-      console.log('script.js user-connected: userId =', userId);
       connectToOtherUser(userId);
     } else if (type === 'leave-room') {
-      console.log('script.js leave-room: userId =', userId);
       const video = document.getElementById('user-' + userId);
       video.remove();
+    } else {
+      console.log('webrtc-util.js message: type =', type, 'was ignored');
     }
   });
 
@@ -159,19 +161,24 @@ function destroyPeer() {
   }
 }
 
+export function enableTrack(kind, enabled) {
+  if (!myStream) return;
+  const tracks = myStream.getTracks();
+  for (const track of tracks) {
+    if (track.kind === kind) track.enabled = enabled;
+  }
+}
+
 export async function joinRoom(email, roomName, videoGrid) {
   myVideoGrid = videoGrid;
 
   // Show my video.
   const myVideo = document.createElement('video');
   myVideo.muted = true; // don't play my own sound
-  console.log('webrtc-util.js joinRoom: calling addVideoStream');
-  addVideoStream(myVideo, myStream);
+  addVideoStream(myVideo, myStream, myUserId);
 
   // Inform all the other users that you have joined the room.
-  const message = {email, type: 'join-room', roomName};
-  console.log('webrtc-util.js joinRoom: ws =', ws);
-  console.log('webrtc-util.js joinRoom: message =', message);
+  const message = {type: 'join-room', email, roomName, userId: myUserId};
   send(message);
 }
 
@@ -187,7 +194,7 @@ export function send(message) {
   }, 1000);
 }
 
-export async function wtcSetup(email) {
-  await createStream();
+export async function wtcSetup(email, audioOn) {
+  await createStream(audioOn);
   createPeer(email);
 }

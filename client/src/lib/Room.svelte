@@ -13,18 +13,22 @@
   import {createEventDispatcher, onMount} from 'svelte';
 
   import {deleteResource} from './fetch-util.js';
-  import {currentRoomStore, emailStore, roomsStore} from './stores.js';
-  import {joinRoom} from './webrtc-util.js';
+  import {
+    audioOnStore,
+    currentRoomStore,
+    emailStore,
+    roomsStore
+  } from './stores.js';
+  import {enableTrack, joinRoom} from './webrtc-util.js';
 
   const dispatch = createEventDispatcher();
 
-  let audioOn = false;
   let chat = false;
   let errorMessage = '';
   let handRaised = false;
   let shareScreen = false;
   let videoGrid;
-  let videoOn = false;
+  let videoOn = true;
 
   $: currentRoomName = $currentRoomStore ? $currentRoomStore.name : '';
 
@@ -50,6 +54,16 @@
     }
   }
 
+  function toggleAudio() {
+    $audioOnStore = !$audioOnStore;
+    enableTrack('audio', $audioOnStore);
+  }
+
+  function toggleVideo() {
+    videoOn = !videoOn;
+    enableTrack('video', videoOn);
+  }
+
 </script>
 
 <section class="room">
@@ -66,16 +80,16 @@
 
   <div class="buttons">
     <button
-      class={'bare' + (audioOn ? '' : ' off')}
-      title="turn on audio"
-      on:click={() => (audioOn = !audioOn)}
+      class={'bare' + ($audioOnStore ? '' : ' off')}
+      title="toggle audio"
+      on:click={toggleAudio}
     >
       <Icon icon={faMicrophone} />
     </button>
     <button
       class={'bare' + (videoOn ? '' : ' off')}
-      title="turn on video"
-      on:click={() => (videoOn = !videoOn)}
+      title="toggle video"
+      on:click={toggleVideo}
     >
       <Icon icon={faVideo} />
     </button>
