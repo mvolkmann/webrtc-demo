@@ -1,11 +1,11 @@
 import cors from 'cors';
 import express from 'express';
 import http from 'http';
+import peer from 'peer';
 import WebSocket from 'ws';
 //import {v4 as uuidV4} from 'uuid';
 
 const app = express();
-const server = http.Server(app);
 
 const emailToUserIdMap = {};
 const emailToWsMap = {};
@@ -200,5 +200,9 @@ app.post('/user', (req, res) => {
 });
 
 const PORT = 1234;
-server.listen(PORT);
+//server.listen(PORT);
+const server = app.listen(PORT);
 console.log('listening on port', PORT);
+
+//app.use('/peerjs', peer.ExpressPeerServer(server, {debug: true}));
+app.use('/peerjs', peer.ExpressPeerServer(server));

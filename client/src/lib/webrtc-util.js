@@ -1,7 +1,8 @@
 import Peer from 'peerjs';
 import {postJson} from './fetch-util.js';
 
-const PEER_PORT = 3001; // matches port in package.json script
+const rootUrl = import.meta.env.VITE_API_ROOT_URL;
+const PEER_PORT = rootUrl.split(':')[2];
 
 //TODO: Will lose this on refresh!
 const peerMap = {};
@@ -66,8 +67,10 @@ function createPeer(email) {
   // Passing undefined means that Peer will assign a random id.
   myPeer = new Peer(undefined, {
     //debug: 3, // for more debugging output
-    host: '/',
-    port: PEER_PORT
+    //host: '/',
+    host: 'localhost',
+    port: PEER_PORT,
+    path: '/peerjs'
   });
 
   // When I connect to the Peer server, it will supply a generated user id.

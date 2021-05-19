@@ -7,7 +7,6 @@
     "build": "vite build",
     "format": "prettier --write '{public,src}/**/*.{css,html,js,svelte}'",
     "lint": "eslint --fix --quiet src --ext .js,.svelte",
-    "peer": "peerjs --port 3001",
     "reinstall": "rm -rf node_modules package-lock.json && npm install",
     "serve": "vite preview",
     "server": "nodemon server.js"

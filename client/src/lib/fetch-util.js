@@ -181,14 +181,7 @@ export const putJson = async (path, payload) =>
 
 async function setUrlPrefix() {
   if (!sessionStorage.getItem('url-prefix')) {
-    const path = '/env.json';
-    try {
-      const res = await fetch(path);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      sessionStorage.setItem('url-prefix', json.API_ROOT_URL);
-    } catch (e) {
-      console.error('fetch-util setUrlPrefix: error getting', path);
-    }
+    const urlPrefix = import.meta.env.VITE_API_ROOT_URL;
+    sessionStorage.setItem('url-prefix', urlPrefix);
   }
 }
