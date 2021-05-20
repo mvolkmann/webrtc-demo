@@ -19,7 +19,7 @@
     emailStore,
     roomsStore
   } from './stores.js';
-  import {enableTrack, joinRoom} from './webrtc-util.js';
+  import {enableTrack, joinRoom, wsSendJson} from './webrtc-util.js';
 
   const dispatch = createEventDispatcher();
 
@@ -30,17 +30,16 @@
   let videoGrid;
   let videoOn = true;
 
-  $: currentRoomName = $currentRoomStore ? $currentRoomStore.name : '';
+  $: roomName = $currentRoomStore ? $currentRoomStore.name : '';
 
   onMount(() => {
-    joinRoom(currentRoomName, videoGrid);
+    joinRoom(roomName, videoGrid);
   });
 
   async function leaveRoom() {
     try {
-      const {name} = $currentRoomStore;
       const email = $emailStore;
-      await deleteResource(`room/${name}/email/${email}`);
+      await deleteResource(`room/${roomName}/email/${email}`);
       roomsStore.update(theRooms => {
         const room = theRooms[name];
         room.emails.filter(e => e !== email);
@@ -59,6 +58,12 @@
     enableTrack('audio', $audioOnStore);
   }
 
+  function toggleHandRaised() {
+    const email = $emailStore;
+    handRaised = !handRaised;
+    wsSendJson({type: 'toggle-hand', email, handRaised, roomName});
+  }
+
   function toggleVideo() {
     videoOn = !videoOn;
     enableTrack('video', videoOn);
@@ -68,7 +73,7 @@
 
 <section class="room">
   <h2>
-    <span>{currentRoomName} Room</span>
+    <span>{roomName} Room</span>
     <button class="bare" title="leave room" on:click={leaveRoom}>
       <Icon icon={faDoorClosed} />
     </button>
@@ -110,7 +115,7 @@
     <button
       class={'bare' + (handRaised ? '' : ' off')}
       title="raise hand"
-      on:click={() => (handRaised = !handRaised)}
+      on:click={toggleHandRaised}
     >
       <Icon icon={faHandPaper} />
     </button>

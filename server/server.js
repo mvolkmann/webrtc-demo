@@ -62,11 +62,14 @@ wss.on('connection', (ws, req) => {
   ws.on('message', message => {
     const json = JSON.parse(message);
     console.log('server.js message: json =', json);
-    const {email, type, roomName} = json;
-    emailToWsMap[email] = ws;
+    const {email, roomName, type} = json;
     if (type === 'join-room') {
+      emailToWsMap[email] = ws;
       const peerId = emailToPeerIdMap[email];
       broadcast(ws, roomName, {type: 'user-connected', email, peerId});
+    } else if (type === 'toggle-hand') {
+      const {handRaised} = json;
+      broadcast(ws, roomName, {type: 'toggle-hand', email, handRaised});
     } else {
       console.log('server.js message: type =', type, 'was ignored');
     }

@@ -153,15 +153,19 @@ function createWebSocket() {
   ws.addEventListener('message', event => {
     const data = JSON.parse(event.data);
     console.log('webrtc-util.js received ws message: data =', data);
-    const {email, type, peerId} = data;
+    const {email, type} = data;
 
     // We only receive this kind of message
     // for users that join a room we are in.
     if (type === 'user-connected') {
+      const {peerId} = data;
       connectToOtherUser(email, peerId);
     } else if (type === 'leave-room') {
       const video = document.getElementById('user-' + peerId);
       video.parentElement.remove();
+    } else if (type === 'toggle-hand') {
+      const {handRaised} = data;
+      alert(`hand raised by ${email}? ${handRaised}`);
     } else {
       console.log('webrtc-util.js message: type =', type, 'was ignored');
     }
