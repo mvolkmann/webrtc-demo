@@ -6,11 +6,6 @@
   import Rooms from './lib/Rooms.svelte';
   import {currentRoomStore, emailStore, roomsStore} from './lib/stores.js';
 
-  //import {v4 as uuidv4} from 'uuid';
-
-  // Every user gets a unique roomId to start.
-  //let roomId = uuidv4();
-
   const componentMap = {
     login: Login,
     room: Room,

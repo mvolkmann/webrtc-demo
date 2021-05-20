@@ -17,6 +17,9 @@ app.use(cors());
 // This enables parsing JSON request bodies.
 app.use(express.json());
 
+// This enables serving static files from a given directory.
+app.use(express.static('../client/dist'));
+
 // Broadcast data to all the users in a given room.
 function broadcast(thisWs, roomName, data) {
   const message = JSON.stringify(data);
@@ -37,6 +40,8 @@ function broadcast(thisWs, roomName, data) {
     console.error(`server.js broadcast: no room named ${roomName} found`);
   }
 }
+
+const conflict = (res, message = '') => res.status(409).send(message);
 
 const notFound = (res, message = '') => res.status(404).send(message);
 
@@ -94,7 +99,7 @@ app.get('/room/:roomName', (req, res) => {
 app.post('/room', (req, res) => {
   const {name} = req.body;
   if (rooms[name]) {
-    return res.status(409).send('room already exists'); // CONFLICT
+    return conflict(res, 'room already exists');
   }
   const room = {name, emails: []};
   rooms[name] = room;
@@ -108,8 +113,7 @@ app.put('/room/:roomName', (req, res) => {
   if (!room) return notFound(res);
 
   if (room.emails.length) {
-    // CONFLICT
-    return res.status(409).send('cannot update room with participants');
+    return conflict(res, 'cannot update room with participants');
   }
 
   const newRoom = req.body;
@@ -129,8 +133,7 @@ app.delete('/room/:roomName', (req, res) => {
   if (!room) return notFound(res);
 
   if (room.emails.length) {
-    // CONFLICT
-    return res.status(409).send('cannot delete room with participants');
+    return conflict(res, 'cannot delete room with participants');
   }
 
   delete rooms[roomName];

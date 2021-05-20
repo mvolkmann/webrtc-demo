@@ -144,6 +144,7 @@ async function createStream(audioOn) {
 function createWebSocket() {
   // Open a connection to the WebSocket server.
   const WS_URL = 'ws://localhost:1919';
+  //const WS_URL = 'ws://192.168.4.26:1919';
   ws = new WebSocket(WS_URL);
 
   window.onbeforeunload = destroyPeer;
@@ -202,10 +203,10 @@ export async function joinRoom(roomName, videoGrid) {
     roomName,
     peerId: myPeerId
   };
-  send(message);
+  wsSendJson(message);
 }
 
-export function send(message) {
+export function wsSendJson(message) {
   const intervalId = setInterval(() => {
     if (ws.readyState === 1) {
       ws.send(JSON.stringify(message));
