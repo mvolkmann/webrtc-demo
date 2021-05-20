@@ -89,7 +89,6 @@
       errorMessage = 'Error getting rooms: ' + e;
     }
   }
-
 </script>
 
 <section class="rooms">
@@ -146,5 +145,4 @@
   .rooms {
     padding: 2rem;
   }
-
 </style>

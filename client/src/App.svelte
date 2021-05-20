@@ -42,7 +42,6 @@
   function show(event) {
     component = componentMap[event.detail];
   }
-
 </script>
 
 <main>
@@ -68,5 +67,4 @@
     justify-content: space-between;
     padding: 2rem;
   }
-
 </style>

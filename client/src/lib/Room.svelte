@@ -10,7 +10,7 @@
     faMicrophone,
     faVideo
   } from '@fortawesome/free-solid-svg-icons';
-  import {createEventDispatcher, onMount} from 'svelte';
+  import {createEventDispatcher, onMount, tick} from 'svelte';
 
   import {deleteResource} from './fetch-util.js';
   import {
@@ -26,6 +26,7 @@
   let chat = false;
   let errorMessage = '';
   let handRaised = false;
+  let participants = [];
   let shareScreen = false;
   let videoGrid;
   let videoOn = true;
@@ -33,15 +34,43 @@
   $: roomName = $currentRoomStore ? $currentRoomStore.name : '';
 
   onMount(() => {
-    joinRoom(roomName, videoGrid);
+    joinRoom(roomName, addParticipant, removeParticipant, setHandRaised);
   });
+
+  async function addParticipant(email, peerId, stream) {
+    let participant = participants.find(p => p.email === email);
+    if (participant) {
+      // If the stream is already associated with this participant ...
+      if (stream === participant.stream) {
+        console.log('Room.svelte addParticipant: duplicate stream');
+        return;
+      }
+    } else {
+      participant = {email, peerId};
+      participants.push(participant);
+      participants = participants; // trigger reactivity
+    }
+    participant.stream = stream;
+
+    // Wait for the UI to update.
+    await tick();
+
+    const container = document.getElementById(peerId);
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    if (email === $emailStore) video.muted = true; // don't play my own sound
+    video.addEventListener('canplay', () => {
+      video.play();
+    });
+    container.append(video);
+  }
 
   async function leaveRoom() {
     try {
       const email = $emailStore;
       await deleteResource(`room/${roomName}/email/${email}`);
       roomsStore.update(theRooms => {
-        const room = theRooms[name];
+        const room = theRooms[roomName];
         room.emails.filter(e => e !== email);
         return theRooms;
       });
@@ -49,7 +78,20 @@
       errorMessage = '';
       dispatch('show', 'rooms');
     } catch (e) {
-      errorMessage = 'Error leaving room: ' + e.message;
+      console.error('Room.svelte leaveRoom: e =', e);
+      errorMessage = 'Error leaving room: ' + e;
+    }
+  }
+
+  function removeParticipant(peerId) {
+    participants = participants.filter(p => p.peerId !== peerId);
+  }
+
+  function setHandRaised(email, handRaised) {
+    const participant = participants.find(p => p.email === email);
+    if (participant) {
+      participant.handRaised = handRaised;
+      participants = participants; // toggle reactivity
     }
   }
 
@@ -59,8 +101,15 @@
   }
 
   function toggleHandRaised() {
-    const email = $emailStore;
     handRaised = !handRaised;
+
+    // Set in my participant object.
+    const email = $emailStore;
+    const participant = participants.find(p => p.email === email);
+    participant.handRaised = handRaised;
+    participants = participants; // toggle reactivity
+
+    // Set in other participant objects.
     wsSendJson({type: 'toggle-hand', email, handRaised, roomName});
   }
 
@@ -121,13 +170,21 @@
     </button>
   </div>
 
-  <div id="video-grid" bind:this={videoGrid} />
+  <div id="video-grid" bind:this={videoGrid}>
+    {#each participants as participant}
+      <div id={participant.peerId} class="container">
+        <div class="row">
+          <div class="email">{participant.email}</div>
+          <div class:off={!participant.handRaised}>
+            <Icon icon={faHandPaper} />
+          </div>
+        </div>
+      </div>
+    {/each}
+  </div>
 </section>
 
 <style>
-  button.off :global(.fa-svelte) {
-    color: lightgray;
-  }
   h2 {
     display: flex;
     align-items: center;
@@ -137,8 +194,25 @@
     margin-left: 1rem;
   }
 
+  .off :global(.fa-svelte) {
+    color: lightgray;
+  }
+
   .room {
     padding: 2rem;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .row :global(.fa-svelte) {
+    color: var(--secondary-color);
+  }
+
+  .row .off :global(.fa-svelte) {
+    color: lightgray;
   }
 
   #video-grid {

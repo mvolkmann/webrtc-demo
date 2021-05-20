@@ -27,7 +27,7 @@
       setTimeout(() => {
         startTime = Date.now();
         if (busyCounter > 0) busyStore.set(true);
-      }, 500);
+      }, 200);
     }
   }
 </script>
@@ -118,7 +118,7 @@
     justify-content: center;
     align-items: center;
 
-    position: absolute;
+    position: fixed;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);

@@ -21,7 +21,7 @@ app.use(express.json());
 app.use(express.static('../client/dist'));
 
 // Broadcast data to all the users in a given room.
-function broadcast(thisWs, roomName, data) {
+function broadcast(thisWs, roomName, data, includeSelf) {
   const message = JSON.stringify(data);
 
   // This approach doesn't support sending the message
@@ -32,9 +32,11 @@ function broadcast(thisWs, roomName, data) {
   if (room) {
     const webSockets = room.emails.map(email => emailToWsMap[email]);
     for (const ws of webSockets) {
-      const isOpen = ws.readyState === WebSocket.OPEN;
-      const isSelf = ws === thisWs;
-      if (isOpen && !isSelf) ws.send(message);
+      if (ws) {
+        const isOpen = ws.readyState === WebSocket.OPEN;
+        const shouldSend = isOpen && (includeSelf || ws !== thisWs);
+        if (shouldSend) ws.send(message);
+      }
     }
   } else {
     console.error(`server.js broadcast: no room named ${roomName} found`);

@@ -7,49 +7,30 @@ const PEER_PORT = rootUrl.split(':')[2];
 //TODO: Will lose this on refresh!
 const peerMap = {};
 
+let addParticipant;
 let myEmail;
 let myPeer;
 //TODO: Is this also a property of the myPeer object?
 let myPeerId; // The Peer server generates this.
 let myStream;
-let myVideoGrid;
+let removeParticipant;
+let setHandRaised;
 let ws;
 
 // This needs to happen on every browser refresh.
 createWebSocket();
 
-function addVideoStream(video, stream, peerId, email) {
-  // If the video is already associated with this stream ...
-  if (stream === video.srcObject) return;
-
-  if (peerId) video.id = 'user-' + peerId;
-  video.srcObject = stream;
-
-  const container = document.createElement('div');
-  const label = document.createElement('div');
-  label.textContent = email || 'unknown';
-  container.append(label);
-  container.append(video);
-  myVideoGrid.append(container);
-  video.addEventListener('canplay', () => {
-    video.play();
-  });
-}
-
 // This is called when we receive a WebSocket message
 // informing us that another user has joined the room we are in.
 function connectToOtherUser(email, peerId) {
-  // Create a video element for rendering their stream.
-  const video = document.createElement('video');
-
   // Share my stream with the other user
   // so they can render it in a new video element.
   const call = myPeer.call(peerId, myStream);
 
   // When another user shares their stream with me,
-  // add a video element that renders their stream.
+  // add them as a participant.
   call.on('stream', stream => {
-    addVideoStream(video, stream, call.peer, email);
+    addParticipant(email, call.peer, stream);
   });
 
   call.on('error', error => {
@@ -59,11 +40,11 @@ function connectToOtherUser(email, peerId) {
   // This event is never sent.
   // See https://github.com/peers/peerjs/issues/780.
   // When another user closes their stream,
-  // remove the video element that was rendering their stream.
+  // remove them from the list of participants.
   //TODO: This should be triggered by destroyPeer in webrtc-util.js!
   call.on('close', () => {
     console.log('webrtc-util.js connectToOtherUser: got close event');
-    video.parentElement.remove();
+    removeParticipant(call.peer);
   });
 
   //TODO: Is a call the same thing as a peer?
@@ -103,18 +84,8 @@ function createPeer() {
       call.answer(myStream);
 
       // When another user shares their stream with me,
-      // add the video element that renders their stream.
+      // add them as a participant.
       call.on('stream', async otherStream => {
-        // Determine if we already have video element that is using this stream.
-        const videos = Array.from(myVideoGrid.querySelectorAll('video'));
-        const alreadyUsing = videos.some(
-          video => video.srcObject.id === otherStream.id
-        );
-        if (alreadyUsing) return;
-
-        // Create a video element for rendering their stream.
-        const otherVideo = document.createElement('video');
-
         const peerId = call.peer;
         let email;
         try {
@@ -124,7 +95,7 @@ function createPeer() {
         }
 
         // call.peer holds the peerId associated with otherStream.
-        addVideoStream(otherVideo, otherStream, peerId, email);
+        addParticipant(email, peerId, otherStream);
       });
     });
   });
@@ -161,11 +132,9 @@ function createWebSocket() {
       const {peerId} = data;
       connectToOtherUser(email, peerId);
     } else if (type === 'leave-room') {
-      const video = document.getElementById('user-' + peerId);
-      video.parentElement.remove();
+      removeParticipant(peerId);
     } else if (type === 'toggle-hand') {
-      const {handRaised} = data;
-      alert(`hand raised by ${email}? ${handRaised}`);
+      setHandRaised(email, data.handRaised);
     } else {
       console.log('webrtc-util.js message: type =', type, 'was ignored');
     }
@@ -192,13 +161,17 @@ export function enableTrack(kind, enabled) {
   }
 }
 
-export async function joinRoom(roomName, videoGrid) {
-  myVideoGrid = videoGrid;
+export async function joinRoom(
+  roomName,
+  addParticipantFn,
+  removeParticipantFn,
+  setHandRaisedFn
+) {
+  addParticipant = addParticipantFn;
+  removeParticipant = removeParticipantFn;
+  setHandRaised = setHandRaisedFn;
 
-  // Show my video.
-  const myVideo = document.createElement('video');
-  myVideo.muted = true; // don't play my own sound
-  addVideoStream(myVideo, myStream, myPeerId, myEmail);
+  addParticipant(myEmail, myPeerId, myStream);
 
   // Inform all the other users that you have joined the room.
   const message = {

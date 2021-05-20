@@ -1,3 +1,9 @@
 {
-  "cSpell.words": ["loadedmetadata", "peerjs", "sveltejs", "webrtc"]
+  "cSpell.words": [
+    "canplay",
+    "loadedmetadata",
+    "peerjs",
+    "sveltejs",
+    "webrtc"
+  ]
 }

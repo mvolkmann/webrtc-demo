@@ -12,7 +12,6 @@
     wtcSetup($emailStore, $audioOnStore);
     dispatch('show', 'rooms');
   }
-
 </script>
 
 <form on:submit|preventDefault={login}>
@@ -58,5 +57,4 @@
     text-align: right;
     width: var(--label-width);
   }
-
 </style>
