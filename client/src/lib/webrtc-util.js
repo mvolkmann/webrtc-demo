@@ -13,6 +13,7 @@ let myPeer;
 //TODO: Is this also a property of the myPeer object?
 let myStream;
 let removeParticipant;
+let removeScreenShare;
 let setHandRaised;
 let ws;
 
@@ -29,6 +30,7 @@ function connectToOtherUser(email, peerId) {
   // When another user shares their stream with me,
   // add them as a participant.
   call.on('stream', stream => {
+    console.log('webrtc-util.js connectToOtherUser: got stream');
     addParticipant(email, call.peer, stream);
   });
 
@@ -93,7 +95,6 @@ function createPeer() {
           email = peerId;
         }
 
-        // call.peer holds the peerId associated with otherStream.
         addParticipant(email, peerId, otherStream);
       });
     });
@@ -129,11 +130,11 @@ function createWebSocket() {
     // We only receive this kind of message
     // for users that join a room we are in.
     if (type === 'user-connected') {
-      const {peerId} = data;
-      connectToOtherUser(email, peerId);
+      connectToOtherUser(email, data.peerId);
     } else if (type === 'leave-room') {
-      const {peerId} = data;
-      removeParticipant(peerId);
+      removeParticipant(data.peerId);
+    } else if (type === 'stop-screen-share') {
+      removeScreenShare(data.peerId);
     } else if (type === 'toggle-hand') {
       setHandRaised(email, data.handRaised);
     } else {
@@ -163,33 +164,35 @@ export function enableTrack(kind, enabled) {
   }
 }
 
-export async function joinRoom(
-  roomName,
-  addParticipantFn,
-  removeParticipantFn,
-  setHandRaisedFn
-) {
-  addParticipant = addParticipantFn;
-  removeParticipant = removeParticipantFn;
-  setHandRaised = setHandRaisedFn;
+export async function joinRoom(options) {
+  const roomName = options.roomName;
+  addParticipant = options.addParticipant;
+  removeParticipant = options.removeParticipant;
+  removeScreenShare = options.removeScreenShare;
+  setHandRaised = options.setHandRaised;
 
   const peerId = myPeer.id;
   addParticipant(myEmail, peerId, myStream);
 
   // Inform all the other users that you have joined the room.
-  const message = {
-    type: 'join-room',
-    email: myEmail,
-    roomName,
-    peerId
-  };
+  const message = {type: 'join-room', email: myEmail, roomName};
   wsSendJson(message);
+}
+
+export function shareStream(stream, peerIds) {
+  for (const peerId of peerIds) {
+    //myPeer.call(peerId, stream.clone()); //TODO: Need clone?
+    myPeer.call(peerId, stream);
+  }
 }
 
 export function wsSendJson(message) {
   const intervalId = setInterval(() => {
     if (ws.readyState === 1) {
-      ws.send(JSON.stringify(message));
+      // Always include the peer id of the sender.
+      message.peerId = myPeer.id;
+      const data = JSON.stringify(message);
+      ws.send(data);
       clearInterval(intervalId);
     } else {
       console.log('webrtc-util.js send: ws.readyState =', ws.readyState);

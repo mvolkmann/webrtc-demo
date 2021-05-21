@@ -19,40 +19,60 @@
     emailStore,
     roomsStore
   } from './stores.js';
-  import {enableTrack, joinRoom, wsSendJson} from './webrtc-util.js';
+  import {
+    enableTrack,
+    joinRoom,
+    shareStream,
+    wsSendJson
+  } from './webrtc-util.js';
 
   const dispatch = createEventDispatcher();
 
   let chat = false;
   let errorMessage = '';
   let handRaised = false;
+  let myScreenVideo;
   let participants = [];
   let shareScreen = false;
-  let shareScreenVideo;
   let videoGrid;
   let videoOn = true;
 
   $: roomName = $currentRoomStore ? $currentRoomStore.name : '';
 
   onMount(() => {
-    joinRoom(roomName, addParticipant, removeParticipant, setHandRaised);
+    joinRoom({
+      roomName,
+      addParticipant,
+      removeParticipant,
+      removeScreenShare,
+      setHandRaised
+    });
     participants.forEach(addStream);
   });
 
   function addStream(participant) {
-    const container = document.getElementById(participant.peerId);
+    const container = videoGrid.querySelector('#peer-' + participant.peerId);
     if (container) {
-      const video = container.querySelector('video');
-      video.srcObject = participant.stream;
+      let stream = participant.videoStream;
+      if (stream) {
+        const cameraVideo = container.querySelector('video.camera');
+        cameraVideo.srcObject = stream;
+      }
+
+      stream = participant.screenStream;
+      if (stream) {
+        const screenVideo = container.querySelector('video.screen');
+        screenVideo.srcObject = stream;
+      }
     }
   }
 
   async function addParticipant(email, peerId, stream) {
     let participant = participants.find(p => p.email === email);
     if (participant) {
-      // If the stream is already associated with this participant ...
-      if (stream === participant.stream) {
-        console.log('Room.svelte addParticipant: duplicate stream');
+      // If the video stream is already associated with this participant ...
+      if (participant.videoStream === stream) {
+        console.log('Room.svelte addParticipant: duplicate video stream');
         return;
       }
     } else {
@@ -60,19 +80,51 @@
       participants.push(participant);
       participants = participants; // trigger reactivity
     }
-    participant.stream = stream;
+
+    if (participant.videoStream) {
+      // Assume the stream is for screen sharing.
+      participant.screenStream = stream;
+      //TODO: Why do we never get ended events?
+      stream.getTracks().forEach(track => {
+        track.addEventListener('ended', () => {
+          console.log(
+            'Room.svelte addParticipant: got end of track for',
+            email
+          );
+        });
+      });
+    } else {
+      participant.videoStream = stream;
+    }
 
     // Wait for the UI to update.
     await tick();
 
-    const video = document.createElement('video');
-    if (email === $emailStore) video.muted = true; // don't play my own sound
-    video.addEventListener('canplay', () => {
-      video.play();
-    });
-    const container = document.getElementById(peerId);
-    container.append(video);
+    const container = videoGrid.querySelector('#peer-' + participant.peerId);
+
+    // Get the camera video element for this participant.
+    let cameraVideo = container.querySelector('video.camera');
+    if (!cameraVideo) {
+      cameraVideo = createVideoElement('camera');
+      if (email === $emailStore) cameraVideo.muted = true; // don't play my own sound
+      container.append(cameraVideo);
+    }
+
+    // Get the screen sharing video element for this participant.
+    let screenVideo = container.querySelector('video.screen');
+    if (!screenVideo) {
+      screenVideo = createVideoElement('screen');
+      container.append(screenVideo);
+    }
+
     addStream(participant);
+  }
+
+  function createVideoElement(className) {
+    const video = document.createElement('video');
+    video.classList.add(className);
+    video.setAttribute('autoplay', 'autoplay');
+    return video;
   }
 
   async function leaveRoom() {
@@ -95,6 +147,12 @@
 
   function removeParticipant(peerId) {
     participants = participants.filter(p => p.peerId !== peerId);
+  }
+
+  function removeScreenShare(peerId) {
+    const container = videoGrid.querySelector('#peer-' + peerId);
+    const video = container.querySelector('video.screen');
+    video.srcObject = null;
   }
 
   function setHandRaised(email, handRaised) {
@@ -130,15 +188,31 @@
         audio: false,
         video: {cursor: 'always'}
       };
-      const stream = await navigator.mediaDevices.getDisplayMedia(options);
-      shareScreenVideo.srcObject = stream;
-      //TODO: Add a track using this stream to the Peer object.
+      const screenStream = await navigator.mediaDevices.getDisplayMedia(
+        options
+      );
+
+      // Display the screen I am sharing in the first.
+      myScreenVideo = videoGrid.querySelector('video.screen');
+      myScreenVideo.classList.add('self');
+      myScreenVideo.srcObject = screenStream;
+
+      // Share the screen with other participants in the same room.
+      shareStream(
+        screenStream,
+        participants.map(p => p.peerId)
+      );
     } else {
-      const stream = shareScreenVideo.srcObject;
-      shareScreenVideo.srcObject = null;
-      stream.getTracks().forEach(track => track.stop());
+      const screenStream = myScreenVideo.srcObject;
+      if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
+      }
+      myScreenVideo.srcObject = null;
+
+      // Tell other users to remove the screen sharing video
+      // for this participant.
+      wsSendJson({type: 'stop-screen-share', roomName});
     }
-    //senders.find(sender => sender.track.kind === 'video').replaceTrack(displayMediaStream.getTracks()[0]);
   }
 
   function toggleVideo() {
@@ -200,7 +274,7 @@
 
   <div id="video-grid" bind:this={videoGrid}>
     {#each participants as participant}
-      <div id={participant.peerId} class="container">
+      <div id={'peer-' + participant.peerId} class="container">
         <div class="row">
           <div class="email">{participant.email}</div>
           <div class:off={!participant.handRaised}>
@@ -210,13 +284,6 @@
       </div>
     {/each}
   </div>
-
-  {#if shareScreen}
-    <video id="share-screen" autoplay bind:this={shareScreenVideo}>
-      <track kind="captions" />
-      <track kind="video" />
-    </video>
-  {/if}
 </section>
 
 <style>
@@ -267,6 +334,10 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  #video-grid :global(video.self) {
+    border: 1px solid red;
   }
 
 </style>

@@ -56,7 +56,7 @@ function sendJson(res, obj, status = 200) {
 const wss = new WebSocket.Server({port: 1919});
 
 // When a client connects ...
-wss.on('connection', (ws, req) => {
+wss.on('connection', ws => {
   //const ip = req.socket.remoteAddress;
   //console.log('server.js connection: ip =', ip);
 
@@ -64,13 +64,15 @@ wss.on('connection', (ws, req) => {
   ws.on('message', message => {
     const json = JSON.parse(message);
     console.log('server.js message: json =', json);
-    const {email, roomName, type} = json;
+    const {peerId, roomName, type} = json;
     if (type === 'join-room') {
+      const {email} = json;
       emailToWsMap[email] = ws;
-      const peerId = emailToPeerIdMap[email];
       broadcast(ws, roomName, {type: 'user-connected', email, peerId});
+    } else if (type === 'stop-screen-share') {
+      broadcast(ws, roomName, {type: 'stop-screen-share', peerId});
     } else if (type === 'toggle-hand') {
-      const {handRaised} = json;
+      const {email, handRaised} = json;
       broadcast(ws, roomName, {type: 'toggle-hand', email, handRaised});
     } else {
       console.log('server.js message: type =', type, 'was ignored');
