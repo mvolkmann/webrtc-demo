@@ -28,6 +28,7 @@
   let handRaised = false;
   let participants = [];
   let shareScreen = false;
+  let shareScreenVideo;
   let videoGrid;
   let videoOn = true;
 
@@ -35,7 +36,16 @@
 
   onMount(() => {
     joinRoom(roomName, addParticipant, removeParticipant, setHandRaised);
+    participants.forEach(addStream);
   });
+
+  function addStream(participant) {
+    const container = document.getElementById(participant.peerId);
+    if (container) {
+      const video = container.querySelector('video');
+      video.srcObject = participant.stream;
+    }
+  }
 
   async function addParticipant(email, peerId, stream) {
     let participant = participants.find(p => p.email === email);
@@ -55,14 +65,14 @@
     // Wait for the UI to update.
     await tick();
 
-    const container = document.getElementById(peerId);
     const video = document.createElement('video');
-    video.srcObject = stream;
     if (email === $emailStore) video.muted = true; // don't play my own sound
     video.addEventListener('canplay', () => {
       video.play();
     });
+    const container = document.getElementById(peerId);
     container.append(video);
+    addStream(participant);
   }
 
   async function leaveRoom() {
@@ -113,6 +123,24 @@
     wsSendJson({type: 'toggle-hand', email, handRaised, roomName});
   }
 
+  async function toggleShareScreen() {
+    shareScreen = !shareScreen;
+    if (shareScreen) {
+      const options = {
+        audio: false,
+        video: {cursor: 'always'}
+      };
+      const stream = await navigator.mediaDevices.getDisplayMedia(options);
+      shareScreenVideo.srcObject = stream;
+      //TODO: Add a track using this stream to the Peer object.
+    } else {
+      const stream = shareScreenVideo.srcObject;
+      shareScreenVideo.srcObject = null;
+      stream.getTracks().forEach(track => track.stop());
+    }
+    //senders.find(sender => sender.track.kind === 'video').replaceTrack(displayMediaStream.getTracks()[0]);
+  }
+
   function toggleVideo() {
     videoOn = !videoOn;
     enableTrack('video', videoOn);
@@ -150,7 +178,7 @@
     <button
       class={'bare' + (shareScreen ? '' : ' off')}
       title="share screen"
-      on:click={() => (shareScreen = !shareScreen)}
+      on:click={toggleShareScreen}
     >
       <Icon icon={faDesktop} />
     </button>
@@ -182,6 +210,13 @@
       </div>
     {/each}
   </div>
+
+  {#if shareScreen}
+    <video id="share-screen" autoplay bind:this={shareScreenVideo}>
+      <track kind="captions" />
+      <track kind="video" />
+    </video>
+  {/if}
 </section>
 
 <style>
@@ -213,6 +248,11 @@
 
   .row .off :global(.fa-svelte) {
     color: lightgray;
+  }
+
+  #share-screen {
+    margin-top: 3rem;
+    width: 100%;
   }
 
   #video-grid {

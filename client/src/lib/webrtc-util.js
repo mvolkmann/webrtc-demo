@@ -11,7 +11,6 @@ let addParticipant;
 let myEmail;
 let myPeer;
 //TODO: Is this also a property of the myPeer object?
-let myPeerId; // The Peer server generates this.
 let myStream;
 let removeParticipant;
 let setHandRaised;
@@ -63,16 +62,16 @@ function createPeer() {
   });
 
   // When I connect to the Peer server, it will supply a generated user id.
-  myPeer.on('open', async thisPeerId => {
-    myPeerId = thisPeerId;
+  myPeer.on('open', async () => {
+    const peerId = myPeer.id;
 
     try {
-      await postJson('user', {email: myEmail, peerId: myPeerId});
+      await postJson('user', {email: myEmail, peerId});
     } catch (e) {
       console.error('error associating peerId with email:', e);
     }
 
-    peerMap[myPeerId] = myPeer;
+    peerMap[peerId] = myPeer;
 
     // It is important that myStream is set before we listen for "call" events.
     // See https://github.com/WebDevSimplified/Zoom-Clone-With-WebRTC/issues/56.
@@ -104,9 +103,10 @@ function createPeer() {
 async function createStream(audioOn) {
   try {
     myStream = await navigator.mediaDevices.getUserMedia({
-      audio: audioOn,
+      audio: true,
       video: true
     });
+    myStream.getAudioTracks().forEach(track => (track.enabled = audioOn));
   } catch (e) {
     console.error('createStream error:', e);
   }
@@ -132,6 +132,7 @@ function createWebSocket() {
       const {peerId} = data;
       connectToOtherUser(email, peerId);
     } else if (type === 'leave-room') {
+      const {peerId} = data;
       removeParticipant(peerId);
     } else if (type === 'toggle-hand') {
       setHandRaised(email, data.handRaised);
@@ -146,10 +147,11 @@ function createWebSocket() {
 
 function destroyPeer() {
   console.log('webrtc-util.js destroyPeer: entered');
-  const peer = peerMap[myPeerId];
+  const peerId = myPeer.id;
+  const peer = peerMap[peerId];
   if (peer) {
     peer.destroy();
-    delete peerMap[myPeerId];
+    delete peerMap[peerId];
   }
 }
 
@@ -171,14 +173,15 @@ export async function joinRoom(
   removeParticipant = removeParticipantFn;
   setHandRaised = setHandRaisedFn;
 
-  addParticipant(myEmail, myPeerId, myStream);
+  const peerId = myPeer.id;
+  addParticipant(myEmail, peerId, myStream);
 
   // Inform all the other users that you have joined the room.
   const message = {
     type: 'join-room',
     email: myEmail,
     roomName,
-    peerId: myPeerId
+    peerId
   };
   wsSendJson(message);
 }
