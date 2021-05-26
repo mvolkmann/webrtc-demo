@@ -7,7 +7,7 @@
     "lint": "eslint --fix --quiet . --ext .js",
     "ngrok": "ngrok http http://localhost:1234",
     "reinstall": "rm -rf node_modules package-lock.json && npm install",
-    "server": "nodemon server.js"
+    "start": "nodemon server.js"
   },
   "author": "R. Mark Volkmann",
   "license": "MIT",
@@ -19,6 +19,7 @@
     "peer": "^0.6.1",
     "peerjs": "^1.3.2",
     "prettier": "^2.3.0",
+    "sqlite3": "^5.0.2",
     "ws": "^7.4.5"
   },
   "devDependencies": {

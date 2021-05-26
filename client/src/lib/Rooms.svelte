@@ -21,6 +21,8 @@
   let roomName;
   let roomToDelete;
 
+  $: console.log('Rooms.svelte x: $roomsStore =', $roomsStore);
+
   onMount(loadRooms);
 
   function confirmDeleteRoom(room) {
@@ -89,6 +91,7 @@
       errorMessage = 'Error getting rooms: ' + e;
     }
   }
+
 </script>
 
 <section class="rooms">
@@ -145,4 +148,5 @@
   .rooms {
     padding: 2rem;
   }
+
 </style>

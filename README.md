@@ -32,3 +32,9 @@ and browse localhost:1234 from multiple browsers.
 To run the UI on another device on the same WIFI network,
 enter `ifconfig` in a terminal and note the en0 inet address.
 Then replace localhost with that IP address.
+
+To create the database:
+
+- install SQLite
+- `cd server`
+- `sqlite3 webrtc.db < schema.txt`

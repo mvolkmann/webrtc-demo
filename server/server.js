@@ -1,7 +1,10 @@
 import cors from 'cors';
 import express from 'express';
 import peer from 'peer';
+import sqlite3 from 'sqlite3';
 import WebSocket from 'ws';
+
+const db = new sqlite3.Database('webrtc.db');
 
 const app = express();
 
@@ -87,8 +90,36 @@ app.get('/peer/:peerId/email', (req, res) => {
 });
 
 // Gets all the existing rooms.
-app.get('/room', (req, res) => {
-  sendJson(res, rooms);
+app.get('/room', (_, res) => {
+  db.all('select * from rooms', (err, rooms) => {
+    if (err) return res.status(500).send(err);
+
+    const roomMap = {};
+
+    let error;
+
+    for (const room of rooms) {
+      room.emails = [];
+      //TODO: Use a prepared statement.
+      db.all(
+        `select * from participants where roomId = ${room.id}`,
+        (err, participants) => {
+          if (err) {
+            error = err;
+          } else {
+            room.emails = participants.map(p => p.email);
+          }
+        }
+      );
+      roomMap[room.name] = room;
+    }
+
+    if (error) {
+      res.status(500).send(error);
+    } else {
+      sendJson(res, roomMap);
+    }
+  });
 });
 
 // Gets a specific room.
@@ -110,6 +141,10 @@ app.post('/room', (req, res) => {
   }
   const room = {name, emails: []};
   rooms[name] = room;
+
+  const sql = `insert into rooms (name) values ("${name}")`;
+  db.run(sql);
+
   sendJson(res, room, 201);
 });
 
