@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "server to demonstrate using WebRTC",
   "scripts": {
+    "db-reset": "sqlite3 webrtc.db < schema.txt",
     "format": "prettier --write '*.js'",
     "lint": "eslint --fix --quiet . --ext .js",
     "ngrok": "ngrok http http://localhost:1234",

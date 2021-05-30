@@ -3,6 +3,7 @@
     "autoincrement",
     "autoplay",
     "canplay",
+    "inet",
     "loadedmetadata",
     "peerjs",
     "sveltejs",

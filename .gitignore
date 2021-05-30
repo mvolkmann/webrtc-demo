@@ -1,3 +1,4 @@
 client/dist/
 node_modules/
+server/webrtc.db
 .DS_Store

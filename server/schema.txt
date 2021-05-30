@@ -1,12 +1,12 @@
-drop table participant;
+drop table if exists participant;
 create table participant (
   email string,
   peerId string,
   roomId integer
 );
 
-drop table rooms;
-create table rooms (
+drop table if exists room;
+create table room (
   id integer primary key autoincrement,
   name string
 );

@@ -91,7 +91,7 @@ app.get('/peer/:peerId/email', (req, res) => {
 
 // Gets all the existing rooms.
 app.get('/room', (_, res) => {
-  db.all('select * from rooms', (err, rooms) => {
+  db.all('select * from room', (err, rooms) => {
     if (err) return res.status(500).send(err);
 
     const roomMap = {};
@@ -142,7 +142,7 @@ app.post('/room', (req, res) => {
   const room = {name, emails: []};
   rooms[name] = room;
 
-  const sql = `insert into rooms (name) values ("${name}")`;
+  const sql = `insert into room (name) values ("${name}")`;
   db.run(sql);
 
   sendJson(res, room, 201);
