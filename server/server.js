@@ -250,16 +250,19 @@ app.delete('/room/:name/email/:email', async (req, res) => {
     if (!room) return notFound(res, 'room not found');
 
     // Verify that the participant exists.
-    const sql = 'select * from participant where email = ? and roomName = ?';
-    const participant = await queryFirst(sql, [email, room.name]);
+    let sql = 'select * from participant where email = ? and roomName = ?';
+    const participant = await queryFirst(sql, [email, name]);
     if (!participant) return notFound(res, 'participant not in room');
 
+    // Get the peer id of the participant.
+    sql = 'select peerId from peer where email = ?';
+    const peer = await queryFirst(sql, [email]);
+
     // Delete the participant from the room.
-    const {id, peerId} = participant;
-    await run('delete from participant where id = ?', [id]);
+    await run('delete from participant where id = ?', [participant.id]);
 
     // Let other clients know the participant has left the room.
-    broadcast(null, name, {type: 'leave-room', peerId});
+    broadcast(null, name, {type: 'leave-room', peerId: peer.peerId});
     res.send();
   } catch (error) {
     dbError(res, error);
