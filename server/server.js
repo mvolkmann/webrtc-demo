@@ -8,10 +8,7 @@ const db = new sqlite3.Database('webrtc.db');
 
 const app = express();
 
-const emailToPeerIdMap = {};
 const emailToWsMap = {};
-const peerIdToEmailMap = {};
-const rooms = {};
 
 // This enables Cross-Origin Resource Sharing (CORS)
 // which is needed to allow Socket.io connections from another domain.
@@ -24,29 +21,30 @@ app.use(express.json());
 app.use(express.static('../client/dist'));
 
 // Broadcast data to all the users in a given room.
-function broadcast(thisWs, roomName, data, includeSelf) {
+async function broadcast(thisWs, roomName, data, includeSelf) {
   const message = JSON.stringify(data);
 
   // This approach doesn't support sending the message
   // to only clients in the given room.
   //wss.clients.forEach(client => {
 
-  const room = rooms[roomName];
-  if (room) {
-    const webSockets = room.emails.map(email => emailToWsMap[email]);
-    for (const ws of webSockets) {
-      if (ws) {
-        const isOpen = ws.readyState === WebSocket.OPEN;
-        const shouldSend = isOpen && (includeSelf || ws !== thisWs);
-        if (shouldSend) ws.send(message);
-      }
+  // Get the email addresses of the all the participants in the room.
+  const sql = 'select email from participant where roomName = ?';
+  const participants = await queryAll(sql, [roomName]);
+
+  for (const participant of participants) {
+    const ws = emailToWsMap[participant.email];
+    if (ws) {
+      const isOpen = ws.readyState === WebSocket.OPEN;
+      const shouldSend = isOpen && (includeSelf || ws !== thisWs);
+      if (shouldSend) ws.send(message);
     }
-  } else {
-    console.error(`server.js broadcast: no room named ${roomName} found`);
   }
 }
 
 const conflict = (res, message = '') => res.status(409).send(message);
+
+const dbError = (res, err) => res.status(500).send(err);
 
 const notFound = (res, message = '') => res.status(404).send(message);
 
@@ -66,7 +64,6 @@ wss.on('connection', ws => {
   // When a message is received ...
   ws.on('message', message => {
     const json = JSON.parse(message);
-    console.log('server.js message: json =', json);
     const {peerId, roomName, type} = json;
     if (type === 'join-room') {
       const {email} = json;
@@ -78,76 +75,102 @@ wss.on('connection', ws => {
       const {email, handRaised} = json;
       broadcast(ws, roomName, {type: 'toggle-hand', email, handRaised});
     } else {
-      console.log('server.js message: type =', type, 'was ignored');
+      console.info('server.js message: type =', type, 'was ignored');
     }
   });
 });
 
 // Gets the email address corresponding to a given peer id.
-app.get('/peer/:peerId/email', (req, res) => {
+app.get('/peer/:peerId/email', async (req, res) => {
   const {peerId} = req.params;
-  res.send(peerIdToEmailMap[peerId] || '');
+
+  const sql = 'select email from peer where peerId = ?';
+  try {
+    const participant = await queryFirst(sql, [peerId]);
+    if (!participant) {
+      return notFound(res, `no participant with peerId "${peerId}" found`);
+    }
+    res.send(participant.email || '');
+  } catch (error) {
+    console.error('server.js get email of peer: error =', error);
+    dbError(res, error);
+  }
 });
 
+const queryAll = (sql, args) => asyncSqlite('all', sql, args);
+const queryFirst = (sql, args) => asyncSqlite('get', sql, args);
+const run = (sql, args) => asyncSqlite('run', sql, args);
+function asyncSqlite(method, sql, args) {
+  console.log('---');
+  console.log('server.js asyncSqlite: method =', method);
+  console.log('server.js asyncSqlite: sql =', sql);
+  console.log('server.js asyncSqlite: args =', args);
+  return new Promise((resolve, reject) => {
+    db[method](sql, args, (err, result) => {
+      console.log('server.js asyncSqlite: err =', err);
+      console.log('server.js asyncSqlite: result =', result);
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+}
+
 // Gets all the existing rooms.
-app.get('/room', (_, res) => {
-  db.all('select * from room', (err, rooms) => {
-    if (err) return res.status(500).send(err);
+app.get('/room', async (_, res) => {
+  const sql = 'select email from participant where roomName = ?';
+
+  try {
+    const rooms = await queryAll('select * from room');
+    const promises = rooms.map(room => queryAll(sql, [room.name]));
+    const results = await Promise.all(promises);
 
     const roomMap = {};
-
-    let error;
-
-    for (const room of rooms) {
-      room.emails = [];
-      //TODO: Use a prepared statement.
-      db.all(
-        `select * from participants where roomId = ${room.id}`,
-        (err, participants) => {
-          if (err) {
-            error = err;
-          } else {
-            room.emails = participants.map(p => p.email);
-          }
-        }
-      );
+    rooms.forEach((room, index) => {
+      const participants = results[index];
+      room.emails = participants.map(p => p.email);
       roomMap[room.name] = room;
-    }
-
-    if (error) {
-      res.status(500).send(error);
-    } else {
-      sendJson(res, roomMap);
-    }
-  });
+    });
+    sendJson(res, roomMap);
+  } catch (error) {
+    dbError(res, error);
+  }
 });
 
 // Gets a specific room.
-app.get('/room/:roomName', (req, res) => {
+app.get('/room/:roomName', async (req, res) => {
   const {roomName} = req.params;
-  const room = rooms[roomName];
-  if (room) {
+
+  try {
+    let sql = 'select * from room where name = ?';
+    const room = await queryFirst(sql, [roomName]);
+    if (!room) return notFound(res);
+
+    sql = 'select * from participant where roomName = ?';
+    const participants = await queryAll(sql, [roomName]);
+    room.emails = participants.map(p => p.email);
     sendJson(res, room);
-  } else {
-    notFound(res);
+  } catch (error) {
+    dbError(res, error);
   }
 });
 
 // Creates a new room.
-app.post('/room', (req, res) => {
+app.post('/room', async (req, res) => {
   const {name} = req.body;
-  if (rooms[name]) {
-    return conflict(res, 'room already exists');
+  const sql = 'insert into room (name) values (?)';
+  try {
+    await run(sql, [name]);
+    const room = {name};
+    sendJson(res, room, 201);
+  } catch (error) {
+    dbError(res, error);
   }
-  const room = {name, emails: []};
-  rooms[name] = room;
-
-  const sql = `insert into room (name) values ("${name}")`;
-  db.run(sql);
-
-  sendJson(res, room, 201);
 });
 
+/* TODO: Is this used?
 // Updates an existing room.
 app.put('/room/:roomName', (req, res) => {
   const {roomName} = req.params;
@@ -167,57 +190,94 @@ app.put('/room/:roomName', (req, res) => {
   }
   res.send();
 });
+*/
 
 // Deletes an existing room.
-app.delete('/room/:roomName', (req, res) => {
-  const {roomName} = req.params;
-  const room = rooms[roomName];
-  if (!room) return notFound(res);
+app.delete('/room/:name', async (req, res) => {
+  const {name} = req.params;
 
-  if (room.emails.length) {
-    return conflict(res, 'cannot delete room with participants');
+  // Verify that the room exists.
+  try {
+    let sql = 'select * from room where name = ?';
+    const room = await queryFirst(sql, [name]);
+    if (!room) return notFound(res);
+
+    // Get the participants in this room.
+    sql = 'select email from participant where roomName = ?';
+    const participants = await queryAll(sql, [name]);
+    if (participants.length) {
+      return conflict(res, 'cannot delete room with participants');
+    }
+
+    await run('delete from room where name = ?', [name]);
+    res.send();
+  } catch (error) {
+    dbError(res, error);
   }
-
-  delete rooms[roomName];
-  res.send();
 });
 
 // Adds a participant to a room.
-app.post('/room/:roomName/email', (req, res) => {
-  const {roomName} = req.params;
-  const room = rooms[roomName];
-  if (!room) return notFound(res);
-
+app.post('/room/:name/email', async (req, res) => {
+  const {name} = req.params;
   const {email} = req.body;
-  if (!room.emails.includes(email)) room.emails.push(email);
 
-  sendJson(res, room);
+  try {
+    // Verify that the room exists.
+    const room = await queryFirst('select * from room where name = ?', [name]);
+    if (!room) return notFound(res);
+
+    // Add the participant to the room.
+    let sql = 'insert into participant (email, roomName) values (?, ?)';
+    await run(sql, [email, name]);
+
+    // Get all the room participants.
+    sql = 'select email from participant where roomName = ?';
+    const participants = await queryAll(sql, [name]);
+    room.emails = participants.map(p => p.email);
+    sendJson(res, room);
+  } catch (error) {
+    dbError(res, error);
+  }
 });
 
 // Removes a participant from a room.
-app.delete('/room/:roomName/email/:email', (req, res) => {
-  const {email, roomName} = req.params;
-  const room = rooms[roomName];
-  if (!room) return notFound(res);
+app.delete('/room/:name/email/:email', async (req, res) => {
+  const {email, name} = req.params;
 
-  if (!room.emails.includes(email)) {
-    return notFound(res, 'participant not in room');
+  try {
+    // Verify that the room exists.
+    const room = queryFirst('select * from room where name = ?', [name]);
+    if (!room) return notFound(res, 'room not found');
+
+    // Verify that the participant exists.
+    const sql = 'select * from participant where email = ? and roomName = ?';
+    const participant = await queryFirst(sql, [email, room.name]);
+    if (!participant) return notFound(res, 'participant not in room');
+
+    // Delete the participant from the room.
+    const {id, peerId} = participant;
+    await run('delete from participant where id = ?', [id]);
+
+    // Let other clients know the participant has left the room.
+    broadcast(null, name, {type: 'leave-room', peerId});
+    res.send();
+  } catch (error) {
+    dbError(res, error);
   }
-
-  room.emails = room.emails.filter(p => p !== email);
-
-  const peerId = emailToPeerIdMap[email];
-  broadcast(null, roomName, {type: 'leave-room', peerId});
-
-  res.send();
 });
 
-// Associates a user id with an email.
-app.post('/user', (req, res) => {
+// Associates a peer id with an email.
+app.post('/user', async (req, res) => {
   const {email, peerId} = req.body;
-  emailToPeerIdMap[email] = peerId;
-  peerIdToEmailMap[peerId] = email;
-  res.send();
+  const sql =
+    'insert into peer (email, peerId) values ($email, $peerId) ' +
+    'on conflict(email) do update set peerId = $peerId ';
+  try {
+    await run(sql, {$email: email, $peerId: peerId});
+    res.send();
+  } catch (error) {
+    dbError(res, error);
+  }
 });
 
 const PORT = 1234;

@@ -30,7 +30,6 @@ function connectToOtherUser(email, peerId) {
   // When another user shares their stream with me,
   // add them as a participant.
   call.on('stream', stream => {
-    console.log('webrtc-util.js connectToOtherUser: got stream');
     addParticipant(email, call.peer, stream);
   });
 
@@ -63,7 +62,8 @@ function createPeer() {
     path: '/peerjs'
   });
 
-  // When I connect to the Peer server, it will supply a generated user id.
+  // When I connect to the Peer server,
+  // it will supply a generated id in myPeer.id.
   myPeer.on('open', async () => {
     const peerId = myPeer.id;
 
@@ -124,7 +124,6 @@ function createWebSocket() {
   // When a WebSocket message is received ...
   ws.addEventListener('message', event => {
     const data = JSON.parse(event.data);
-    console.log('webrtc-util.js received ws message: data =', data);
     const {email, type} = data;
 
     // We only receive this kind of message
@@ -138,7 +137,7 @@ function createWebSocket() {
     } else if (type === 'toggle-hand') {
       setHandRaised(email, data.handRaised);
     } else {
-      console.log('webrtc-util.js message: type =', type, 'was ignored');
+      console.info('webrtc-util.js message: type =', type, 'was ignored');
     }
   });
 

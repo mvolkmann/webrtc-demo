@@ -21,12 +21,9 @@
   let roomName;
   let roomToDelete;
 
-  $: console.log('Rooms.svelte x: $roomsStore =', $roomsStore);
-
   onMount(loadRooms);
 
   function confirmDeleteRoom(room) {
-    console.log('Rooms.svelte confirmDeleteRoom: entered');
     roomToDelete = room;
     deleteDialog.showModal();
   }
@@ -36,6 +33,7 @@
     try {
       const room = await postJson('room', body);
       roomsStore.update(theRooms => {
+        room.emails = [];
         theRooms[roomName] = room;
         return theRooms;
       });
@@ -91,7 +89,6 @@
       errorMessage = 'Error getting rooms: ' + e;
     }
   }
-
 </script>
 
 <section class="rooms">
@@ -148,5 +145,4 @@
   .rooms {
     padding: 2rem;
   }
-
 </style>

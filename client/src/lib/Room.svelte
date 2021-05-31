@@ -72,7 +72,7 @@
     if (participant) {
       // If the video stream is already associated with this participant ...
       if (participant.videoStream === stream) {
-        console.log('Room.svelte addParticipant: duplicate video stream');
+        console.info('Room.svelte addParticipant: duplicate video stream');
         return;
       }
     } else {
@@ -219,7 +219,6 @@
     videoOn = !videoOn;
     enableTrack('video', videoOn);
   }
-
 </script>
 
 <section class="room">
@@ -339,5 +338,4 @@
   #video-grid :global(video.self) {
     border: 1px solid red;
   }
-
 </style>

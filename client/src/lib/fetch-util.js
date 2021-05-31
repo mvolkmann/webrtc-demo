@@ -82,6 +82,7 @@ async function handleJson(method, path, payload) {
 
   taskStart();
   //await sleep(2000); // simulate long-running task
+
   try {
     //payload.csrf = csrf;
     const body = JSON.stringify(payload);
@@ -117,11 +118,9 @@ async function handleResponse(res) {
     : res;
 }
 
-export const patchJson = async (path, payload) =>
-  handleJson('PATCH', path, payload);
+export const patchJson = (path, payload) => handleJson('PATCH', path, payload);
 
-export const postJson = async (path, payload) =>
-  handleJson('POST', path, payload);
+export const postJson = (path, payload) => handleJson('POST', path, payload);
 
 export async function postMultipartJson(path, data) {
   taskStart();
